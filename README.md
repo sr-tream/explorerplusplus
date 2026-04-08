@@ -6,6 +6,23 @@
 
 Explorer++ is a lightweight and fast file manager for Windows.
 
+## Fork status
+
+This fork contains personal changes that are **not PR-ready** yet. The code hasn't been reviewed by a human, some features still have small bugs, and parts were dropped in the current state because they're already useful for my own workflow.
+
+That means these changes may not be accepted upstream and may not be useful for every Explorer++ user.
+
+### Fork-only changes
+
+* Git status coloring in the list view for files and folders, with color rule filters for modified, staged, untracked, deleted, conflicted, added and ignored items
+* Search dialog support for file content search plus indexed search through Windows Search
+* Tree view navigation fix when clicking an already-selected folder after switching tabs
+* Git ignored folder handling fix so folders with non-ignored content are no longer shown as fully ignored
+* Replacement of Microsoft Detours with KNSoft.SlimDetours to improve ARM64 dark mode hook support
+* Dark mode theming for shell-created dialogs and property sheets, plus better git status refresh after directory changes
+
+These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
+
 ## Features
 
 * With the option to save to the registry or a configuration file, Explorer++ is __completely portable__
