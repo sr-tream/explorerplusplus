@@ -67,8 +67,8 @@ private:
 	void FlushMenuThemes();
 	void RefreshImmersiveColorPolicyState();
 
-	LONG DetourOpenNcThemeData();
-	LONG RestoreOpenNcThemeData();
+	HRESULT DetourOpenNcThemeData();
+	HRESULT RestoreOpenNcThemeData();
 	static HTHEME WINAPI DetouredOpenNcThemeData(HWND hwnd, LPCWSTR classList);
 
 	// Windows 10 1809

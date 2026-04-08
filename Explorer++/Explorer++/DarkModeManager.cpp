@@ -9,7 +9,6 @@
 #include "../Helper/DetoursHelper.h"
 #include "../Helper/Helper.h"
 #include "../Helper/RegistrySettings.h"
-#include <detours/detours.h>
 #include <wil/common.h>
 
 DarkModeManager::DarkModeManager(EventWindow *eventWindow, const Config *config) : m_config(config)
@@ -145,24 +144,18 @@ void DarkModeManager::UpdateAppDarkModeStatus()
 	FlushMenuThemes();
 	RefreshImmersiveColorPolicyState();
 
-	// This detour seemingly causes an illegal instruction (0xc000001d) crash on ARM64 (see #478),
-	// which is the reason for the check here. Note that while disabling this detour on ARM64
-	// prevents the crash, it also means some scrollbars (e.g. the listview scrollbar) will appear
-	// light when dark mode is enabled on ARM64.
-#if !defined(BUILD_ARM64)
-	LONG res;
+	HRESULT hr;
 
 	if (enable)
 	{
-		res = DetourOpenNcThemeData();
+		hr = DetourOpenNcThemeData();
 	}
 	else
 	{
-		res = RestoreOpenNcThemeData();
+		hr = RestoreOpenNcThemeData();
 	}
 
-	DCHECK_EQ(res, NO_ERROR);
-#endif
+	DCHECK(SUCCEEDED(hr));
 
 	m_darkModeEnabled = enable;
 
@@ -235,24 +228,16 @@ void DarkModeManager::RefreshImmersiveColorPolicyState()
 	}
 }
 
-LONG DarkModeManager::DetourOpenNcThemeData()
+HRESULT DarkModeManager::DetourOpenNcThemeData()
 {
-	return DetourTransaction(
-		[]
-		{
-			return DetourAttach(&(PVOID &) m_OpenNcThemeData,
-				reinterpret_cast<PVOID>(DetouredOpenNcThemeData));
-		});
+	return InlineHook(true, &(PVOID &) m_OpenNcThemeData,
+		reinterpret_cast<PVOID>(DetouredOpenNcThemeData));
 }
 
-LONG DarkModeManager::RestoreOpenNcThemeData()
+HRESULT DarkModeManager::RestoreOpenNcThemeData()
 {
-	return DetourTransaction(
-		[]
-		{
-			return DetourDetach(&(PVOID &) m_OpenNcThemeData,
-				reinterpret_cast<PVOID>(DetouredOpenNcThemeData));
-		});
+	return InlineHook(false, &(PVOID &) m_OpenNcThemeData,
+		reinterpret_cast<PVOID>(DetouredOpenNcThemeData));
 }
 
 HTHEME WINAPI DarkModeManager::DetouredOpenNcThemeData(HWND hwnd, LPCWSTR classList)

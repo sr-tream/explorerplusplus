@@ -4,6 +4,6 @@
 
 #pragma once
 
-#include <functional>
+#include <KNSoft/SlimDetours/SlimDetours.h>
 
-LONG DetourTransaction(std::function<LONG()> callback);
+HRESULT InlineHook(bool enable, PVOID *ppPointer, PVOID pDetour);

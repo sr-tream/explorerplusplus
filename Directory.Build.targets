@@ -1,3 +1,4 @@
 <Project>
  <Import Project="$(MSBuildThisFileDirectory)Explorer++\ThirdParty\vcpkg\scripts\buildsystems\msbuild\vcpkg.targets" />
+ <Import Project="$(MSBuildThisFileDirectory)Explorer++\ThirdParty\SlimDetours\KNSoft.SlimDetours.targets" />
 </Project>

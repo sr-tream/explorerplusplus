@@ -24,7 +24,6 @@
     "concurrencpp",
     "cppcodec",
     "cppwinrt",
-    "detours",
     "fmt",
     "glog",
     "gtest",

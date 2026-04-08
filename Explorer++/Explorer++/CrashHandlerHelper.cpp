@@ -14,7 +14,6 @@
 #include "../Helper/ProcessHelper.h"
 #include <boost/algorithm/string/join.hpp>
 #include <boost/pfr.hpp>
-#include <detours/detours.h>
 #include <glog/logging.h>
 #include <wil/resource.h>
 #include <DbgHelp.h>
@@ -102,12 +101,9 @@ std::wstring FormatCrashedDataForCommandLine(const CrashedData &crashedData)
 
 LONG DisableSetUnhandledExceptionFilter()
 {
-	return DetourTransaction(
-		[]
-		{
-			return DetourAttach(&(PVOID &) OriginalSetUnhandledExceptionFilter,
-				reinterpret_cast<PVOID>(DetouredSetUnhandledExceptionFilter));
-		});
+	HRESULT hr = InlineHook(true, &(PVOID &) OriginalSetUnhandledExceptionFilter,
+		reinterpret_cast<PVOID>(DetouredSetUnhandledExceptionFilter));
+	return SUCCEEDED(hr) ? NO_ERROR : hr;
 }
 
 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI DetouredSetUnhandledExceptionFilter(
