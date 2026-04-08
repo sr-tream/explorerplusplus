@@ -26,13 +26,53 @@ ThemeManager::ThemeManager(DarkModeManager *darkModeManager,
 	m_darkModeManager(darkModeManager),
 	m_darkModeColorProvider(darkModeColorProvider)
 {
+	s_mainThreadId = GetCurrentThreadId();
+
+	if (!s_shellDlgBgBrush)
+	{
+		s_shellDlgBgBrush = CreateSolidBrush(SHELL_DLG_BG_COLOR);
+		s_shellTabBgBrush = CreateSolidBrush(SHELL_DLG_TAB_BG_COLOR);
+		s_shellBorderBrush = CreateSolidBrush(SHELL_DLG_BORDER_COLOR);
+	}
+
+	HMODULE uxtheme = GetModuleHandle(L"uxtheme.dll");
+
+	if (uxtheme)
+	{
+		s_AllowDarkModeForWindow =
+			std::bit_cast<AllowDarkModeForWindowFn>(GetProcAddress(uxtheme, MAKEINTRESOURCEA(133)));
+	}
+
+	if (darkModeManager->IsDarkModeEnabled())
+	{
+		s_shellDarkModeActive.store(true, std::memory_order_relaxed);
+		SetupShellDialogDarkModeHook();
+	}
+
 	m_connections.push_back(darkModeManager->darkModeStatusChanged.AddObserver(
 		std::bind(&ThemeManager::OnDarkModeStatusChanged, this)));
+}
+
+ThemeManager::~ThemeManager()
+{
+	TeardownShellDialogDarkModeHook();
 }
 
 void ThemeManager::OnDarkModeStatusChanged()
 {
 	m_windowSubclasses.clear();
+
+	bool darkMode = m_darkModeManager->IsDarkModeEnabled();
+	s_shellDarkModeActive.store(darkMode, std::memory_order_relaxed);
+
+	if (darkMode)
+	{
+		SetupShellDialogDarkModeHook();
+	}
+	else
+	{
+		TeardownShellDialogDarkModeHook();
+	}
 
 	for (HWND hwnd : m_trackedTopLevelWindows)
 	{
@@ -1269,6 +1309,729 @@ LRESULT ThemeManager::ScrollBarSubclass(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 		EndPaint(hwnd, &ps);
 	}
 		return 0;
+	}
+
+	return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+// Shell dialog dark mode support.
+// Property sheets and other shell-created dialogs run on their own threads. We use a WinEvent hook
+// to detect when these dialogs are shown and apply dark mode theming. With WINEVENT_INCONTEXT, the
+// callback runs on the dialog's own thread, making SetWindowSubclass safe to call.
+
+void ThemeManager::SetupShellDialogDarkModeHook()
+{
+	if (m_shellDialogHook)
+	{
+		return;
+	}
+
+	// Try in-context first: callback runs on the dialog's thread (same-thread subclassing is safe).
+	m_shellDialogHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW,
+		GetModuleHandle(nullptr), ShellDialogWinEventProc, GetCurrentProcessId(), 0,
+		WINEVENT_INCONTEXT);
+
+	if (m_shellDialogHook)
+	{
+		s_hookInContext = true;
+		return;
+	}
+
+	// Fallback: out-of-context (callback on main thread, limited theming - no subclassing).
+	m_shellDialogHook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, nullptr,
+		ShellDialogWinEventProc, GetCurrentProcessId(), 0, WINEVENT_OUTOFCONTEXT);
+	s_hookInContext = false;
+}
+
+void ThemeManager::TeardownShellDialogDarkModeHook()
+{
+	if (m_shellDialogHook)
+	{
+		UnhookWinEvent(m_shellDialogHook);
+		m_shellDialogHook = nullptr;
+	}
+}
+
+void CALLBACK ThemeManager::ShellDialogWinEventProc([[maybe_unused]] HWINEVENTHOOK hWinEventHook,
+	[[maybe_unused]] DWORD event, HWND hwnd, LONG idObject, LONG idChild,
+	DWORD idEventThread, [[maybe_unused]] DWORD dwmsEventTime)
+{
+	if (idObject != OBJID_WINDOW || idChild != CHILDID_SELF)
+	{
+		return;
+	}
+
+	if (!IsWindow(hwnd))
+	{
+		return;
+	}
+
+	if (!s_shellDarkModeActive.load(std::memory_order_relaxed))
+	{
+		return;
+	}
+
+	// Skip dialogs on the main thread (themed by normal ThemeManager), unless they are owned by
+	// a shell dialog we have themed (e.g. "Remove Properties" sub-dialog from property sheet).
+	if (idEventThread == s_mainThreadId)
+	{
+		HWND owner = GetWindow(hwnd, GW_OWNER);
+
+		if (!owner || !GetProp(owner, L"ExplorerPPDarkThemed"))
+		{
+			return;
+		}
+	}
+
+	WCHAR className[16];
+
+	if (GetClassName(hwnd, className, static_cast<int>(std::size(className))) == 0)
+	{
+		return;
+	}
+
+	if (lstrcmp(className, DIALOG_CLASS_NAME) != 0)
+	{
+		return;
+	}
+
+	// Skip already-themed windows.
+	if (GetProp(hwnd, L"ExplorerPPDarkThemed"))
+	{
+		return;
+	}
+
+	ApplyDarkModeToShellDialog(hwnd);
+}
+
+void ThemeManager::ApplyDarkModeToShellDialog(HWND hwnd)
+{
+	SetProp(hwnd, L"ExplorerPPDarkThemed", reinterpret_cast<HANDLE>(1));
+
+	// Dark title bar.
+	BOOL dark = TRUE;
+	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
+
+	if (s_AllowDarkModeForWindow)
+	{
+		s_AllowDarkModeForWindow(hwnd, true);
+	}
+
+	// Detect file dialogs (Open/Save/Browse) by checking for the shell folder view control. These
+	// are typically themed by external tools like Windhawk, so we should not theme their children.
+	bool isFileDialog = false;
+
+	EnumChildWindows(
+		hwnd,
+		[](HWND child, LPARAM lParam) -> BOOL
+		{
+			WCHAR cls[64];
+
+			if (GetClassName(child, cls, static_cast<int>(std::size(cls))) != 0
+				&& lstrcmp(cls, L"SHELLDLL_DefView") == 0)
+			{
+				*reinterpret_cast<bool *>(lParam) = true;
+				return FALSE;
+			}
+
+			return TRUE;
+		},
+		reinterpret_cast<LPARAM>(&isFileDialog));
+
+	if (isFileDialog)
+	{
+		return;
+	}
+
+	// Install a subclass for WM_CTLCOLOR handling (only safe when running in-context on the
+	// dialog's own thread).
+	if (s_hookInContext)
+	{
+		SetWindowSubclass(hwnd, ShellDialogSubclassProc, SHELL_DIALOG_SUBCLASS_ID, 0);
+	}
+
+	EnumChildWindows(hwnd, ThemeShellDialogChild, 0);
+}
+
+BOOL CALLBACK ThemeManager::ThemeShellDialogChild(HWND hwnd, [[maybe_unused]] LPARAM lParam)
+{
+	// Skip windows already themed to avoid redundant SetWindowTheme repaints.
+	if (GetProp(hwnd, L"ExplorerPPDarkThemed"))
+	{
+		return TRUE;
+	}
+
+	if (s_AllowDarkModeForWindow)
+	{
+		s_AllowDarkModeForWindow(hwnd, true);
+	}
+
+	WCHAR className[256];
+
+	if (GetClassName(hwnd, className, static_cast<int>(std::size(className))) == 0)
+	{
+		return TRUE;
+	}
+
+	SetProp(hwnd, L"ExplorerPPDarkThemed", reinterpret_cast<HANDLE>(1));
+
+	if (lstrcmp(className, WC_TABCONTROL) == 0)
+	{
+		SetWindowTheme(hwnd, L"", L"");
+
+		if (s_hookInContext)
+		{
+			SetWindowSubclass(hwnd, ShellTabControlSubclassProc, SHELL_TAB_SUBCLASS_ID, 0);
+		}
+	}
+	else if (lstrcmp(className, WC_LISTVIEW) == 0)
+	{
+		SetWindowTheme(hwnd, L"ItemsView", nullptr);
+		ListView_SetBkColor(hwnd, SHELL_DLG_BG_COLOR);
+		ListView_SetTextBkColor(hwnd, SHELL_DLG_BG_COLOR);
+		ListView_SetTextColor(hwnd, SHELL_DLG_TEXT_COLOR);
+
+		if (s_hookInContext)
+		{
+			SetWindowSubclass(hwnd, ShellListViewSubclassProc, SHELL_LISTVIEW_SUBCLASS_ID, 0);
+		}
+	}
+	else if (lstrcmp(className, WC_TREEVIEW) == 0)
+	{
+		SetWindowTheme(hwnd, L"Explorer", nullptr);
+		TreeView_SetBkColor(hwnd, SHELL_DLG_BG_COLOR);
+		TreeView_SetTextColor(hwnd, SHELL_DLG_TEXT_COLOR);
+	}
+	else if (lstrcmp(className, WC_BUTTON) == 0)
+	{
+		auto style = GetWindowLongPtr(hwnd, GWL_STYLE);
+		auto type = style & BS_TYPEMASK;
+
+		if (type == BS_GROUPBOX)
+		{
+			if (s_hookInContext)
+			{
+				SetWindowSubclass(hwnd, ShellGroupBoxSubclassProc, SHELL_GROUPBOX_SUBCLASS_ID, 0);
+			}
+		}
+		else
+		{
+			SetWindowTheme(hwnd, L"Explorer", nullptr);
+		}
+	}
+	else if (lstrcmp(className, WC_EDIT) == 0)
+	{
+		SetWindowTheme(hwnd, L"CFD", nullptr);
+	}
+	else if (lstrcmp(className, PROGRESS_CLASS) == 0)
+	{
+		SetWindowTheme(hwnd, L"Explorer", nullptr);
+	}
+	else if (lstrcmp(className, WC_SCROLLBAR) == 0)
+	{
+		SetWindowTheme(hwnd, L"Explorer", nullptr);
+	}
+	else if (lstrcmp(className, STATUSCLASSNAME) == 0)
+	{
+		SetWindowTheme(hwnd, nullptr, L"ExplorerStatusBar");
+	}
+	else if (lstrcmp(className, WC_HEADER) == 0)
+	{
+		SetWindowTheme(hwnd, L"ItemsView", nullptr);
+	}
+	else if (lstrcmp(className, UPDOWN_CLASS) == 0)
+	{
+		SetWindowTheme(hwnd, L"Explorer", nullptr);
+	}
+	else if (lstrcmp(className, WC_COMBOBOX) == 0)
+	{
+		SetWindowTheme(hwnd, L"CFD", nullptr);
+	}
+	else if (lstrcmp(className, WC_LINK) == 0)
+	{
+		// Set each link item to a lighter color for dark background readability.
+		LITEM item = {};
+		item.mask = LIF_ITEMINDEX | LIF_STATE;
+		item.stateMask = LIS_DEFAULTCOLORS;
+
+		for (int i = 0; SendMessage(hwnd, LM_GETITEM, 0, reinterpret_cast<LPARAM>(&item)); i++)
+		{
+			item.state &= ~LIS_DEFAULTCOLORS;
+			SendMessage(hwnd, LM_SETITEM, 0, reinterpret_cast<LPARAM>(&item));
+			item.iLink = i + 1;
+		}
+
+		if (s_hookInContext)
+		{
+			SetWindowSubclass(hwnd, ShellSysLinkSubclassProc, SHELL_SYSLINK_SUBCLASS_ID, 0);
+		}
+	}
+	else if (lstrcmp(className, DIALOG_CLASS_NAME) == 0)
+	{
+		// Child dialog (e.g. property sheet tab pages). ApplyDarkModeToShellDialog will subclass
+		// it and theme its children. The top-level GetProp guard already prevents re-entry.
+		ApplyDarkModeToShellDialog(hwnd);
+	}
+
+	return TRUE;
+}
+
+LRESULT ThemeManager::OnShellButtonCustomDraw(NMCUSTOMDRAW *customDraw)
+{
+	switch (customDraw->dwDrawStage)
+	{
+	case CDDS_PREPAINT:
+	{
+		auto style = GetWindowLongPtr(customDraw->hdr.hwndFrom, GWL_STYLE);
+
+		SIZE elementSize;
+
+		switch (style & BS_TYPEMASK)
+		{
+		case BS_AUTOCHECKBOX:
+		case BS_CHECKBOX:
+		case BS_AUTO3STATE:
+		case BS_3STATE:
+			elementSize = GetCheckboxSize(customDraw->hdr.hwndFrom);
+			break;
+
+		case BS_AUTORADIOBUTTON:
+		case BS_RADIOBUTTON:
+			elementSize = GetRadioButtonSize(customDraw->hdr.hwndFrom);
+			break;
+
+		default:
+			return CDRF_DODEFAULT;
+		}
+
+		constexpr int CHECKBOX_TEXT_SPACING_96DPI = 3;
+		UINT dpi = DpiCompatibility::GetInstance().GetDpiForWindow(customDraw->hdr.hwndFrom);
+
+		RECT textRect = customDraw->rc;
+		textRect.left +=
+			elementSize.cx + MulDiv(CHECKBOX_TEXT_SPACING_96DPI, dpi, USER_DEFAULT_SCREEN_DPI);
+
+		std::wstring text = GetWindowString(customDraw->hdr.hwndFrom);
+
+		if (text.empty())
+		{
+			return CDRF_DODEFAULT;
+		}
+
+		COLORREF textColor = IsWindowEnabled(customDraw->hdr.hwndFrom)
+			? SHELL_DLG_TEXT_COLOR
+			: SHELL_DLG_DISABLED_TEXT_COLOR;
+		SetTextColor(customDraw->hdc, textColor);
+		SetBkMode(customDraw->hdc, TRANSPARENT);
+
+		UINT textFormat = DT_LEFT;
+
+		if (!WI_IsFlagSet(customDraw->uItemState, CDIS_SHOWKEYBOARDCUES))
+		{
+			WI_SetFlag(textFormat, DT_HIDEPREFIX);
+		}
+
+		RECT finalTextRect = textRect;
+		DrawText(customDraw->hdc, text.c_str(), static_cast<int>(text.size()), &finalTextRect,
+			textFormat | DT_CALCRECT);
+
+		if (GetRectHeight(&finalTextRect) < GetRectHeight(&textRect))
+		{
+			textRect.top += (GetRectHeight(&textRect) - GetRectHeight(&finalTextRect)) / 2;
+		}
+
+		DrawText(customDraw->hdc, text.c_str(), static_cast<int>(text.size()), &textRect,
+			textFormat);
+
+		if (WI_IsFlagSet(customDraw->uItemState, CDIS_FOCUS))
+		{
+			DrawFocusRect(customDraw->hdc, &textRect);
+		}
+
+		return CDRF_SKIPDEFAULT;
+	}
+	}
+
+	return CDRF_DODEFAULT;
+}
+
+LRESULT ThemeManager::OnShellListViewCustomDraw(NMLVCUSTOMDRAW *customDraw)
+{
+	COLORREF textColor = IsWindowEnabled(customDraw->nmcd.hdr.hwndFrom)
+		? SHELL_DLG_TEXT_COLOR
+		: SHELL_DLG_DISABLED_TEXT_COLOR;
+
+	switch (customDraw->nmcd.dwDrawStage)
+	{
+	case CDDS_PREPAINT:
+		return CDRF_NOTIFYITEMDRAW;
+
+	case CDDS_ITEMPREPAINT:
+		customDraw->clrText = textColor;
+		customDraw->clrTextBk = SHELL_DLG_BG_COLOR;
+		return CDRF_NOTIFYSUBITEMDRAW;
+
+	case CDDS_ITEMPREPAINT | CDDS_SUBITEM:
+		customDraw->clrText = textColor;
+		customDraw->clrTextBk = SHELL_DLG_BG_COLOR;
+		return CDRF_DODEFAULT;
+	}
+
+	return CDRF_DODEFAULT;
+}
+
+LRESULT CALLBACK ThemeManager::ShellDialogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR subclassId, [[maybe_unused]] DWORD_PTR refData)
+{
+	if (!s_shellDarkModeActive.load(std::memory_order_relaxed))
+	{
+		return DefSubclassProc(hwnd, msg, wParam, lParam);
+	}
+
+	switch (msg)
+	{
+	case WM_CTLCOLORDLG:
+	case WM_CTLCOLORSTATIC:
+	case WM_CTLCOLOREDIT:
+	case WM_CTLCOLORLISTBOX:
+	case WM_CTLCOLORBTN:
+	{
+		auto hdc = reinterpret_cast<HDC>(wParam);
+		SetBkColor(hdc, SHELL_DLG_BG_COLOR);
+		SetTextColor(hdc, SHELL_DLG_TEXT_COLOR);
+		return reinterpret_cast<LRESULT>(s_shellDlgBgBrush);
+	}
+
+	case WM_NOTIFY:
+	{
+		auto *nmhdr = reinterpret_cast<NMHDR *>(lParam);
+
+		if (nmhdr->code == TCN_SELCHANGE)
+		{
+			// Let the property sheet handle the tab change first (creates/shows the page).
+			LRESULT result = DefSubclassProc(hwnd, msg, wParam, lParam);
+
+			// Theme any newly created child windows (lazy tab pages).
+			EnumChildWindows(hwnd, ThemeShellDialogChild, 0);
+
+			return result;
+		}
+
+		if (nmhdr->code == NM_CUSTOMDRAW)
+		{
+			auto *customDraw = reinterpret_cast<NMCUSTOMDRAW *>(lParam);
+
+			WCHAR childClassName[256];
+
+			if (GetClassName(customDraw->hdr.hwndFrom, childClassName,
+					static_cast<int>(std::size(childClassName)))
+				!= 0)
+			{
+				if (lstrcmp(childClassName, WC_BUTTON) == 0)
+				{
+					return OnShellButtonCustomDraw(customDraw);
+				}
+				else if (lstrcmp(childClassName, WC_LISTVIEW) == 0)
+				{
+					return OnShellListViewCustomDraw(
+						reinterpret_cast<NMLVCUSTOMDRAW *>(customDraw));
+				}
+			}
+		}
+	}
+	break;
+
+	case WM_NCDESTROY:
+		RemoveProp(hwnd, L"ExplorerPPDarkThemed");
+		RemoveWindowSubclass(hwnd, ShellDialogSubclassProc, subclassId);
+		break;
+	}
+
+	return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK ThemeManager::ShellTabControlSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR subclassId, [[maybe_unused]] DWORD_PTR refData)
+{
+	if (!s_shellDarkModeActive.load(std::memory_order_relaxed))
+	{
+		return DefSubclassProc(hwnd, msg, wParam, lParam);
+	}
+
+	switch (msg)
+	{
+	case WM_ERASEBKGND:
+		return 1;
+
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(hwnd, &ps);
+		PaintShellTabControl(hwnd, hdc, ps.rcPaint);
+		EndPaint(hwnd, &ps);
+	}
+		return 0;
+
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hwnd, ShellTabControlSubclassProc, subclassId);
+		break;
+	}
+
+	return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+void ThemeManager::PaintShellTabControl(HWND hwnd, HDC hdc, const RECT &paintRect)
+{
+	RECT clientRect;
+	GetClientRect(hwnd, &clientRect);
+	FillRect(hdc, &clientRect, s_shellDlgBgBrush);
+
+	int numTabs = TabCtrl_GetItemCount(hwnd);
+
+	if (numTabs == 0)
+	{
+		return;
+	}
+
+	int selectedTab = TabCtrl_GetCurSel(hwnd);
+
+	// Draw bottom border under the tab row.
+	RECT firstTabRect;
+	TabCtrl_GetItemRect(hwnd, 0, &firstTabRect);
+	RECT bottomEdge = { clientRect.left, firstTabRect.bottom, clientRect.right,
+		firstTabRect.bottom + 1 };
+	FillRect(hdc, &bottomEdge, s_shellBorderBrush);
+
+	SetBkMode(hdc, TRANSPARENT);
+
+	auto font = reinterpret_cast<HFONT>(SendMessage(hwnd, WM_GETFONT, 0, 0));
+	HGDIOBJ oldFont = font ? SelectObject(hdc, font) : nullptr;
+
+	for (int i = 0; i < numTabs; i++)
+	{
+		RECT tabRect;
+		TabCtrl_GetItemRect(hwnd, i, &tabRect);
+
+		RECT testRect;
+
+		if (!IntersectRect(&testRect, &paintRect, &tabRect))
+		{
+			continue;
+		}
+
+		bool isSelected = (i == selectedTab);
+
+		if (isSelected)
+		{
+			tabRect.top = 0;
+		}
+
+		RECT bgRect = tabRect;
+
+		if (isSelected)
+		{
+			// Cover the bottom border for the selected tab.
+			bgRect.bottom += 1;
+		}
+
+		FillRect(hdc, &bgRect, isSelected ? s_shellDlgBgBrush : s_shellTabBgBrush);
+
+		// Left border (only for first tab).
+		if (i == 0)
+		{
+			RECT leftBorder = { tabRect.left, tabRect.top, tabRect.left + 1, tabRect.bottom };
+			FillRect(hdc, &leftBorder, s_shellBorderBrush);
+		}
+
+		// Right border.
+		int rightBorderTop = tabRect.top;
+
+		if (i == selectedTab - 1)
+		{
+			rightBorderTop = 0;
+		}
+
+		RECT rightBorder = { tabRect.right - 1, rightBorderTop, tabRect.right, tabRect.bottom };
+		FillRect(hdc, &rightBorder, s_shellBorderBrush);
+
+		// Top border.
+		RECT topBorder = { tabRect.left, tabRect.top, tabRect.right, tabRect.top + 1 };
+		FillRect(hdc, &topBorder, s_shellBorderBrush);
+
+		// Draw tab text.
+		WCHAR text[256] = {};
+		TCITEM tci = {};
+		tci.mask = TCIF_TEXT;
+		tci.pszText = text;
+		tci.cchTextMax = static_cast<int>(std::size(text));
+		TabCtrl_GetItem(hwnd, i, &tci);
+
+		SetTextColor(hdc,
+			isSelected ? SHELL_DLG_TEXT_COLOR : SHELL_DLG_BACKGROUND_TEXT_COLOR);
+		DrawText(hdc, text, -1, &tabRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	}
+
+	if (oldFont)
+	{
+		SelectObject(hdc, oldFont);
+	}
+}
+
+LRESULT CALLBACK ThemeManager::ShellGroupBoxSubclassProc(HWND hwnd, UINT msg,
+	WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, [[maybe_unused]] DWORD_PTR refData)
+{
+	if (!s_shellDarkModeActive.load(std::memory_order_relaxed))
+	{
+		return DefSubclassProc(hwnd, msg, wParam, lParam);
+	}
+
+	switch (msg)
+	{
+	case WM_PAINT:
+	{
+		PAINTSTRUCT ps;
+		HDC hdc = BeginPaint(hwnd, &ps);
+
+		RECT rect;
+		GetClientRect(hwnd, &rect);
+
+		int textLen = GetWindowTextLength(hwnd);
+		std::wstring text(static_cast<size_t>(textLen) + 1, L'\0');
+		GetWindowText(hwnd, text.data(), static_cast<int>(text.size()));
+		text.resize(static_cast<size_t>(textLen));
+
+		SetBkMode(hdc, TRANSPARENT);
+		SetTextColor(hdc, SHELL_DLG_TEXT_COLOR);
+
+		auto font = reinterpret_cast<HFONT>(SendMessage(hwnd, WM_GETFONT, 0, 0));
+		HGDIOBJ oldFont = font ? SelectObject(hdc, font) : nullptr;
+
+		RECT textRect = rect;
+		DrawText(hdc, text.c_str(), static_cast<int>(text.size()), &textRect, DT_CALCRECT);
+
+		RECT groupBoxRect = rect;
+		groupBoxRect.top += (textRect.bottom - textRect.top) / 2;
+
+		wil::unique_htheme theme(OpenThemeData(nullptr, L"BUTTON"));
+		DrawThemeBackground(theme.get(), hdc, BP_GROUPBOX, GBS_NORMAL, &groupBoxRect, &ps.rcPaint);
+
+		int xBorder = GetSystemMetrics(SM_CXBORDER);
+		int xEdge = GetSystemMetrics(SM_CXEDGE);
+		OffsetRect(&textRect, 8 - xBorder + xEdge, 0);
+
+		RECT textBackgroundRect = textRect;
+		InflateRect(&textBackgroundRect, xEdge, 0);
+		DrawThemeParentBackground(hwnd, hdc, &textBackgroundRect);
+
+		DrawText(hdc, text.c_str(), static_cast<int>(text.size()), &textRect, DT_LEFT);
+
+		if (oldFont)
+		{
+			SelectObject(hdc, oldFont);
+		}
+
+		EndPaint(hwnd, &ps);
+	}
+		return 0;
+
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hwnd, ShellGroupBoxSubclassProc, subclassId);
+		break;
+	}
+
+	return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK ThemeManager::ShellListViewSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR subclassId, [[maybe_unused]] DWORD_PTR refData)
+{
+	if (!s_shellDarkModeActive.load(std::memory_order_relaxed))
+	{
+		return DefSubclassProc(hwnd, msg, wParam, lParam);
+	}
+
+	switch (msg)
+	{
+	// Prevent the dialog from resetting ListView colors (e.g. when toggling radio buttons in the
+	// "Remove Properties" dialog).
+	case LVM_SETBKCOLOR:
+	case LVM_SETTEXTBKCOLOR:
+		lParam = static_cast<LPARAM>(SHELL_DLG_BG_COLOR);
+		break;
+
+	case LVM_SETTEXTCOLOR:
+		lParam = static_cast<LPARAM>(SHELL_DLG_TEXT_COLOR);
+		break;
+
+	case WM_ENABLE:
+	case WM_THEMECHANGED:
+	{
+		LRESULT result = DefSubclassProc(hwnd, msg, wParam, lParam);
+		SetWindowTheme(hwnd, L"ItemsView", nullptr);
+		ListView_SetBkColor(hwnd, SHELL_DLG_BG_COLOR);
+		ListView_SetTextBkColor(hwnd, SHELL_DLG_BG_COLOR);
+		ListView_SetTextColor(hwnd, SHELL_DLG_TEXT_COLOR);
+		InvalidateRect(hwnd, nullptr, TRUE);
+
+		HWND header = ListView_GetHeader(hwnd);
+
+		if (header)
+		{
+			InvalidateRect(header, nullptr, TRUE);
+		}
+
+		return result;
+	}
+
+	case WM_ERASEBKGND:
+	{
+		auto hdc = reinterpret_cast<HDC>(wParam);
+
+		RECT rc;
+		GetClientRect(hwnd, &rc);
+		FillRect(hdc, &rc, s_shellDlgBgBrush);
+		return 1;
+	}
+
+	case WM_NOTIFY:
+	{
+		auto *nmhdr = reinterpret_cast<LPNMHDR>(lParam);
+
+		// Only handle NM_CUSTOMDRAW from the header control, not from the ListView itself.
+		if (nmhdr->code == NM_CUSTOMDRAW
+			&& nmhdr->hwndFrom == ListView_GetHeader(hwnd))
+		{
+			auto *customDraw = reinterpret_cast<NMCUSTOMDRAW *>(lParam);
+
+			switch (customDraw->dwDrawStage)
+			{
+			case CDDS_PREPAINT:
+				return CDRF_NOTIFYITEMDRAW;
+
+			case CDDS_ITEMPREPAINT:
+				SetTextColor(customDraw->hdc, SHELL_DLG_TEXT_COLOR);
+				return CDRF_NEWFONT;
+			}
+		}
+	}
+	break;
+
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hwnd, ShellListViewSubclassProc, subclassId);
+		break;
+	}
+
+	return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+LRESULT CALLBACK ThemeManager::ShellSysLinkSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR subclassId, [[maybe_unused]] DWORD_PTR refData)
+{
+	switch (msg)
+	{
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hwnd, ShellSysLinkSubclassProc, subclassId);
+		break;
 	}
 
 	return DefSubclassProc(hwnd, msg, wParam, lParam);

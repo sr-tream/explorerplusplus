@@ -6,6 +6,7 @@
 
 #include <boost/signals2.hpp>
 #include <commctrl.h>
+#include <atomic>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -21,6 +22,7 @@ class ThemeManager
 public:
 	ThemeManager(DarkModeManager *darkModeManager,
 		const DarkModeColorProvider *darkModeColorProvider);
+	~ThemeManager();
 
 	// This will theme a top-level window, plus all of its nested children. Once a window is
 	// tracked, any changes to the dark mode status will result in the window theme being
@@ -75,6 +77,55 @@ private:
 	LRESULT RebarSubclass(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT GroupBoxSubclass(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	LRESULT ScrollBarSubclass(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+	// Shell dialog dark mode support (property sheets and other shell-created dialogs).
+	// These run on the shell dialog's own thread via WINEVENT_INCONTEXT, so all state they access
+	// must be static and thread-safe.
+	void SetupShellDialogDarkModeHook();
+	void TeardownShellDialogDarkModeHook();
+
+	static void CALLBACK ShellDialogWinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event,
+		HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime);
+	static void ApplyDarkModeToShellDialog(HWND hwnd);
+	static BOOL CALLBACK ThemeShellDialogChild(HWND hwnd, LPARAM lParam);
+	static LRESULT CALLBACK ShellDialogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+		LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
+	static LRESULT CALLBACK ShellTabControlSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+		LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
+	static LRESULT CALLBACK ShellGroupBoxSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+		LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
+	static LRESULT CALLBACK ShellListViewSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+		LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
+	static LRESULT CALLBACK ShellSysLinkSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
+		LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData);
+	static LRESULT OnShellButtonCustomDraw(NMCUSTOMDRAW *customDraw);
+	static LRESULT OnShellListViewCustomDraw(NMLVCUSTOMDRAW *customDraw);
+	static void PaintShellTabControl(HWND hwnd, HDC hdc, const RECT &paintRect);
+
+	using AllowDarkModeForWindowFn = bool(WINAPI *)(HWND hwnd, bool allow);
+
+	static constexpr UINT_PTR SHELL_DIALOG_SUBCLASS_ID = 0x45505044;
+	static constexpr UINT_PTR SHELL_TAB_SUBCLASS_ID = 0x45505045;
+	static constexpr UINT_PTR SHELL_GROUPBOX_SUBCLASS_ID = 0x45505046;
+	static constexpr UINT_PTR SHELL_LISTVIEW_SUBCLASS_ID = 0x45505047;
+	static constexpr UINT_PTR SHELL_SYSLINK_SUBCLASS_ID = 0x45505048;
+	static constexpr COLORREF SHELL_DLG_BG_COLOR = RGB(32, 32, 32);
+	static constexpr COLORREF SHELL_DLG_TEXT_COLOR = RGB(255, 255, 255);
+	static constexpr COLORREF SHELL_DLG_BACKGROUND_TEXT_COLOR = RGB(180, 180, 180);
+	static constexpr COLORREF SHELL_DLG_DISABLED_TEXT_COLOR = RGB(121, 121, 121);
+	static constexpr COLORREF SHELL_DLG_TAB_BG_COLOR = RGB(38, 38, 38);
+	static constexpr COLORREF SHELL_DLG_BORDER_COLOR = RGB(120, 120, 120);
+	static constexpr COLORREF SHELL_DLG_LINK_COLOR = RGB(100, 180, 255);
+
+	static inline HBRUSH s_shellDlgBgBrush = nullptr;
+	static inline HBRUSH s_shellTabBgBrush = nullptr;
+	static inline HBRUSH s_shellBorderBrush = nullptr;
+	static inline std::atomic<bool> s_shellDarkModeActive{ false };
+	static inline DWORD s_mainThreadId = 0;
+	static inline bool s_hookInContext = false;
+	static inline AllowDarkModeForWindowFn s_AllowDarkModeForWindow = nullptr;
+
+	HWINEVENTHOOK m_shellDialogHook = nullptr;
 
 	DarkModeManager *const m_darkModeManager;
 	const DarkModeColorProvider *const m_darkModeColorProvider;
