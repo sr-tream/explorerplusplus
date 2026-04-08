@@ -270,7 +270,7 @@ void ShellBrowserImpl::UpdateItem(PCIDLIST_ABSOLUTE pidl, PCIDLIST_ABSOLUTE upda
 	}
 
 	auto itemInfo =
-		GetItemInformation(shellFolder.get(), m_directoryState.pidlDirectory.Raw(), pidlChild);
+		RetrieveItemInformation(shellFolder.get(), m_directoryState.pidlDirectory.Raw(), pidlChild);
 
 	if (!itemInfo)
 	{

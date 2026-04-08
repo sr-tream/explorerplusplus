@@ -967,13 +967,13 @@ std::optional<int> ShellBrowserImpl::MaybeGetItemIndex(PCIDLIST_ABSOLUTE pidlIte
 	return std::nullopt;
 }
 
-const ShellBrowserImpl::ItemInfo_t &ShellBrowserImpl::GetItemByIndex(int index) const
+const ItemInfo_t &ShellBrowserImpl::GetItemByIndex(int index) const
 {
 	int internalIndex = GetItemInternalIndex(index);
 	return m_itemInfoMap.at(internalIndex);
 }
 
-ShellBrowserImpl::ItemInfo_t &ShellBrowserImpl::GetItemByIndex(int index)
+ItemInfo_t &ShellBrowserImpl::GetItemByIndex(int index)
 {
 	int internalIndex = GetItemInternalIndex(index);
 	return m_itemInfoMap.at(internalIndex);

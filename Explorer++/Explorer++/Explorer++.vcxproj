@@ -1302,6 +1302,7 @@
     <ClCompile Include="Runtime.cpp" />
     <ClCompile Include="RuntimeHelper.cpp" />
     <ClCompile Include="ShellBrowser\NavigationManager.cpp" />
+    <ClCompile Include="ShellBrowser\ItemInfo.cpp" />
     <ClCompile Include="ShellBrowser\NavigationRequest.cpp" />
     <ClCompile Include="ShellBrowser\ShellBrowser.cpp" />
     <ClCompile Include="StartupCommandLineProcessor.cpp" />
@@ -1674,6 +1675,7 @@
     <ClInclude Include="Runtime.h" />
     <ClInclude Include="RuntimeHelper.h" />
     <ClInclude Include="ShellBrowser\NavigationManager.h" />
+    <ClInclude Include="ShellBrowser\ItemInfo.h" />
     <ClInclude Include="ShellBrowser\NavigationRequest.h" />
     <ClInclude Include="ShellBrowser\NavigationRequestDelegate.h" />
     <ClInclude Include="ShellEnumerator.h" />

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ItemInfo.h"
 #include "NavigateParams.h"
 #include "../Helper/Pidl.h"
 #include "../Helper/WeakPtr.h"
@@ -52,6 +53,9 @@ public:
 	// `WillCommit` or `Committed` state.
 	const std::vector<PidlChild> &GetItems() const;
 
+	// Returns pre-computed item information, retrieved on the background thread during enumeration.
+	const std::vector<ItemInfo_t> &GetItemInfos() const;
+
 	// Indicates whether the enumeration process was stopped early. Note that this is independent of
 	// whether the navigation is ultimately committed or cancelled. That is, it's up to the caller
 	// to decide whether a stopped enumeration should result in a cancellation or not.
@@ -77,6 +81,7 @@ private:
 
 	State m_state = State::NotStarted;
 	std::vector<PidlChild> m_items;
+	std::vector<ItemInfo_t> m_itemInfos;
 
 	WeakPtrFactory<NavigationRequest> m_weakPtrFactory{ this };
 };

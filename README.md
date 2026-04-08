@@ -23,6 +23,7 @@ That means these changes may not be accepted upstream and may not be useful for 
 * Startup time optimization: repo-level git status cache (shared across tabs in the same repo) and deferred navigation for non-selected restored tabs
 * Fix for race condition between directory monitoring and initial item enumeration that caused assertion failures when copying files into a freshly-navigated folder
 * Skip git status for UNC/network paths (including WSL via `\\wsl$\`) to avoid multi-second hangs when browsing Linux filesystems
+* Background shell metadata retrieval: per-item shell calls (display name, attributes, find data) are now computed on the background COM STA thread instead of the UI thread, keeping Explorer++ responsive while navigating slow network or WSL folders
 
 These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
 

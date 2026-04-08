@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "NavigationRequest.h"
 #include "FolderSettings.h"
+#include "ItemInfo.h"
 #include "NavigationEvents.h"
 #include "NavigationRequestDelegate.h"
 #include "ShellBrowser.h"
@@ -84,6 +85,11 @@ const std::vector<PidlChild> &NavigationRequest::GetItems() const
 	return m_items;
 }
 
+const std::vector<ItemInfo_t> &NavigationRequest::GetItemInfos() const
+{
+	return m_itemInfos;
+}
+
 bool NavigationRequest::Stopped() const
 {
 	return m_stopToken.stop_requested();
@@ -136,6 +142,17 @@ concurrencpp::null_result NavigationRequest::StartInternal(WeakPtr<NavigationReq
 				   : ShellItemFilter::HiddenItemPolicy::Exclude,
 		items, stopToken);
 
+	// Compute item display information on the background thread to avoid blocking the UI thread
+	// with per-item shell calls (GetDisplayName, GetAttributesOf, etc.) which are especially
+	// expensive for network/WSL paths.
+	std::vector<ItemInfo_t> itemInfos;
+
+	if (SUCCEEDED(hr) && !stopToken.stop_requested() && !items.empty())
+	{
+		itemInfos =
+			RetrieveItemInformationFromPidls(navigateParams.pidl.Raw(), items, stopToken);
+	}
+
 	co_await concurrencpp::resume_on(originalExecutor);
 
 	if (!weakSelf)
@@ -145,6 +162,7 @@ concurrencpp::null_result NavigationRequest::StartInternal(WeakPtr<NavigationReq
 
 	weakSelf->m_navigateParams = navigateParams;
 	weakSelf->m_items = items;
+	weakSelf->m_itemInfos = std::move(itemInfos);
 	weakSelf->SetState(State::EnumerationFinished);
 
 	if (stopToken.stop_requested())

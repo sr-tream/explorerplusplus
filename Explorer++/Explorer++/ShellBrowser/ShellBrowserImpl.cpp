@@ -73,12 +73,8 @@ ShellBrowserImpl::ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 	m_browser(browser),
 	m_shellEnumerator(std::make_shared<ShellEnumeratorImpl>(owner)),
 	m_navigationManager(this, app->GetNavigationEvents(), m_shellEnumerator,
-		app->GetFeatureList()->IsEnabled(Feature::BackgroundThreadEnumeration)
-			? app->GetRuntime()->GetComStaExecutor()
-			: app->GetRuntime()->GetInlineExecutor(),
-		app->GetFeatureList()->IsEnabled(Feature::BackgroundThreadEnumeration)
-			? app->GetRuntime()->GetUiThreadExecutor()
-			: app->GetRuntime()->GetInlineExecutor()),
+		app->GetRuntime()->GetComStaExecutor(),
+		app->GetRuntime()->GetUiThreadExecutor()),
 	m_progressCursor(LoadCursor(nullptr, IDC_APPSTARTING)),
 	m_commandTarget(browser->GetCommandTargetManager(), this),
 	m_fileActionHandler(fileActionHandler),

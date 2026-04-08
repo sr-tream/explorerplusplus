@@ -10,6 +10,7 @@
 #include "DirectoryWatcher.h"
 #include "FolderSettings.h"
 #include "GitStatusTracker.h"
+#include "ItemInfo.h"
 #include "MainFontSetter.h"
 #include "NavigationManager.h"
 #include "ScopedBrowserCommandTarget.h"
@@ -178,31 +179,6 @@ protected:
 	const NavigationManager *GetNavigationManager() const override;
 
 private:
-	struct ItemInfo_t
-	{
-		PidlAbsolute pidlComplete;
-		PidlChild pridl;
-		WIN32_FIND_DATA wfd;
-		bool isFindDataValid;
-		std::wstring parsingName;
-		std::wstring displayName;
-		std::wstring editingName;
-
-		/* These are only used for drives. They are
-		needed for when a drive is removed from the
-		system, in which case the drive name is needed
-		so that the removed drive can be found. */
-		BOOL bDrive;
-		TCHAR szDrive[4];
-
-		/* Used for temporary sorting in details mode (i.e.
-		when items need to be rearranged). */
-		int iRelativeSort;
-
-		ItemInfo_t() : wfd({}), isFindDataValid(false), bDrive(FALSE)
-		{
-		}
-	};
 
 	struct AwaitingAdd_t
 	{
@@ -373,8 +349,6 @@ private:
 
 	/* Browsing support. */
 	void OnNavigationStarted(const NavigationRequest *request);
-	static std::optional<ItemInfo_t> GetItemInformation(IShellFolder *shellFolder,
-		PCIDLIST_ABSOLUTE pidlDirectory, PCITEMID_CHILD pidlChild);
 	void ChangeFolders(const PidlAbsolute &directory);
 	void PrepareToChangeFolders();
 	void ClearPendingResults();
@@ -382,17 +356,12 @@ private:
 	void ResetFolderState();
 	void OnNavigationWillCommit(const NavigationRequest *request);
 	void OnNavigationComitted(const NavigationRequest *request);
-	void AddNavigationItems(const NavigationRequest *request,
-		const std::vector<PidlChild> &itemPidls);
-	std::vector<ItemInfo_t> GetItemInformationFromPidls(const NavigationRequest *request,
-		const std::vector<PidlChild> &itemPidls);
+	void AddNavigationItems(const NavigationRequest *request);
 	void InsertAwaitingItems();
 	BOOL IsFileFiltered(const ItemInfo_t &itemInfo) const;
 	std::optional<int> AddItemInternal(IShellFolder *shellFolder, PCIDLIST_ABSOLUTE pidlDirectory,
 		PCITEMID_CHILD pidlChild, int itemIndex, BOOL setPosition);
 	int AddItemInternal(int itemIndex, const ItemInfo_t &itemInfo, BOOL setPosition);
-	static HRESULT ExtractFindDataUsingPropertyStore(IShellFolder *shellFolder,
-		PCITEMID_CHILD pidlChild, WIN32_FIND_DATA &output);
 	void SetViewModeInternal(ViewMode viewMode);
 	void SetFirstColumnTextToCallback();
 	void SetFirstColumnTextToFilename();

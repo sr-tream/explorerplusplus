@@ -694,6 +694,9 @@
     <ClCompile Include="ShellBrowser\ShellBrowser.cpp">
       <Filter>ShellBrowser</Filter>
     </ClCompile>
+    <ClCompile Include="ShellBrowser\ItemInfo.cpp">
+      <Filter>ShellBrowser</Filter>
+    </ClCompile>
     <ClCompile Include="ShellBrowser\NavigationRequest.cpp">
       <Filter>ShellBrowser</Filter>
     </ClCompile>
@@ -1660,6 +1663,9 @@
       <Filter>Startup</Filter>
     </ClInclude>
     <ClInclude Include="ShellBrowser\NavigationManager.h">
+      <Filter>ShellBrowser</Filter>
+    </ClInclude>
+    <ClInclude Include="ShellBrowser\ItemInfo.h">
       <Filter>ShellBrowser</Filter>
     </ClInclude>
     <ClInclude Include="ShellBrowser\NavigationRequest.h">
