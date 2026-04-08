@@ -6,8 +6,10 @@
 
 #include "WinRTBaseWrapper.h"
 #include <wil/com.h>
+#include <wil/resource.h>
 #include <objidl.h>
 #include <shldisp.h>
+#include <unordered_map>
 
 // Wraps an existing IDataObject instance that doesn't support IDataObjectAsyncCapability.
 // Note the use of winrt::non_agile. That marker struct is necessary, otherwise copying and pasting
@@ -48,6 +50,11 @@ public:
 
 private:
 	wil::com_ptr_nothrow<IDataObject> m_dataObject;
+
+	// Local overrides for specific clipboard formats. SetData() stores HGLOBAL-based formats here
+	// so that GetData() reliably returns the overridden data (the shell IDataObject may not honour
+	// a SetData() override for formats it already provides).
+	std::unordered_map<CLIPFORMAT, wil::unique_stg_medium> m_localFormats;
 
 	bool m_inOperation = false;
 	bool m_isOpAsync = false;

@@ -6,8 +6,94 @@
 #include "DragDropHelper.h"
 #include "DataObjectWrapper.h"
 #include "Helper.h"
+#include "ShellHelper.h"
 #include "WinRTBaseWrapper.h"
 #include <wil/com.h>
+
+// If any dragged item is a shell link (.lnk shortcut or NTFS symlink), overrides the CF_HDROP
+// format on the data object with the resolved target paths so that non-shell apps that read only
+// raw file paths (e.g. Telegram) receive the real file instead of the link. Shell-specific formats
+// such as CFSTR_SHELLIDLIST are left untouched, preserving correct shell drag semantics.
+static void OverrideCfHDropWithResolvedLinks(const std::vector<PCIDLIST_ABSOLUTE> &items,
+	IDataObject *dataObject)
+{
+	bool anyResolved = false;
+	std::vector<std::wstring> paths;
+	paths.reserve(items.size());
+
+	for (PCIDLIST_ABSOLUTE item : items)
+	{
+		unique_pidl_absolute targetPidl;
+
+		if (SUCCEEDED(MaybeGetLinkTarget(item, targetPidl)))
+		{
+			wchar_t targetPath[MAX_PATH];
+
+			if (SHGetPathFromIDList(targetPidl.get(), targetPath))
+			{
+				paths.emplace_back(targetPath);
+				anyResolved = true;
+				continue;
+			}
+		}
+
+		// Not a link or resolution failed — use the original path as-is.
+		wchar_t path[MAX_PATH];
+
+		if (SHGetPathFromIDList(item, path))
+		{
+			paths.emplace_back(path);
+		}
+	}
+
+	if (!anyResolved || paths.empty())
+	{
+		return;
+	}
+
+	// Build a CF_HDROP HGLOBAL: DROPFILES header followed by wide null-terminated paths and a
+	// final double null terminator.
+	size_t totalChars = 1; // final null
+
+	for (const auto &p : paths)
+	{
+		totalChars += p.size() + 1;
+	}
+
+	wil::unique_hglobal hDrop(GlobalAlloc(GHND, sizeof(DROPFILES) + totalChars * sizeof(wchar_t)));
+
+	if (!hDrop)
+	{
+		return;
+	}
+
+	auto *df = static_cast<DROPFILES *>(GlobalLock(hDrop.get()));
+
+	if (!df)
+	{
+		return;
+	}
+
+	df->pFiles = sizeof(DROPFILES);
+	df->pt = {};
+	df->fNC = FALSE;
+	df->fWide = TRUE;
+
+	auto *dest = reinterpret_cast<wchar_t *>(df + 1);
+
+	for (const auto &p : paths)
+	{
+		wmemcpy(dest, p.c_str(), p.size());
+		dest[p.size()] = L'\0';
+		dest += p.size() + 1;
+	}
+
+	*dest = L'\0';
+	GlobalUnlock(hDrop.get());
+
+	FORMATETC ftc = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
+	MoveStorageToObject(dataObject, &ftc, GetStgMediumForGlobal(std::move(hDrop)));
+}
 
 wil::unique_stg_medium GetStgMediumForGlobal(wil::unique_hglobal global)
 {
@@ -88,6 +174,10 @@ HRESULT StartDragForShellItems(const std::vector<PCIDLIST_ABSOLUTE> &items,
 	{
 		RETURN_IF_FAILED(SetPreferredDropEffect(dataObject.get(), *preferredDropEffect));
 	}
+
+	// For link items (.lnk shortcuts, NTFS symlinks), override CF_HDROP with resolved target
+	// paths so non-shell apps that consume only raw file paths receive the real file.
+	OverrideCfHDropWithResolvedLinks(items, dataObject.get());
 
 	DWORD effect;
 	return SHDoDragDrop(nullptr, dataObject.get(), nullptr, allowedEffects, &effect);
