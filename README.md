@@ -20,6 +20,9 @@ That means these changes may not be accepted upstream and may not be useful for 
 * Git ignored folder handling fix so folders with non-ignored content are no longer shown as fully ignored
 * Replacement of Microsoft Detours with KNSoft.SlimDetours to improve ARM64 dark mode hook support
 * Dark mode theming for shell-created dialogs and property sheets, plus better git status refresh after directory changes
+* Startup time optimization: repo-level git status cache (shared across tabs in the same repo) and deferred navigation for non-selected restored tabs
+* Fix for race condition between directory monitoring and initial item enumeration that caused assertion failures when copying files into a freshly-navigated folder
+* Skip git status for UNC/network paths (including WSL via `\\wsl$\`) to avoid multi-second hangs when browsing Linux filesystems
 
 These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
 
