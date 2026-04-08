@@ -464,9 +464,12 @@ void ShellBrowserImpl::OnNavigationComitted(const NavigationRequest *request)
 
 	RecalcWindowCursor(m_listView);
 
-	StartDirectoryMonitoring();
-
 	AddNavigationItems(request, request->GetItems());
+
+	// Start monitoring only after all enumerated items have been added to the view, so that
+	// change notifications don't race with the initial population and trigger duplicate-item
+	// assertions in OnItemAdded.
+	StartDirectoryMonitoring();
 
 	SetNavigationState(NavigationState::Committed);
 }
