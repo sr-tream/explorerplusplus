@@ -77,6 +77,12 @@ struct Config
 	bool showInfoTips = true;
 	InfoTipType infoTipType = InfoTipType::System;
 
+	// Content search maximum file size in KiB (0 = no limit)
+	UINT contentSearchMaxFileSizeKB = 1024;
+
+	// Whether to use Windows Search indexed search by default
+	bool useIndexedSearchByDefault = false;
+
 	ValueWrapper<std::optional<CustomFont>> mainFont;
 
 	// Startup

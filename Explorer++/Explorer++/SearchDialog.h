@@ -45,6 +45,7 @@ private:
 	static const TCHAR SETTING_PATTERN_LIST[];
 	static const TCHAR SETTING_SORT_MODE[];
 	static const TCHAR SETTING_SORT_ASCENDING[];
+	static const TCHAR SETTING_USE_INDEXED_SEARCH[];
 
 	enum class SortMode
 	{
@@ -80,11 +81,13 @@ private:
 	void ListToCircularBuffer(const std::list<T> &list, boost::circular_buffer<T> &cb);
 
 	std::wstring m_searchPattern;
+	std::wstring m_contentPattern;
 	boost::circular_buffer<std::wstring> m_searchPatterns;
 	boost::circular_buffer<std::wstring> m_searchDirectories;
 	BOOL m_bSearchSubFolders;
 	BOOL m_bUseRegularExpressions;
 	BOOL m_bCaseInsensitive;
+	BOOL m_bUseIndexedSearch;
 	BOOL m_bArchive;
 	BOOL m_bHidden;
 	BOOL m_bReadOnly;
@@ -102,7 +105,9 @@ class Search : public ReferenceCount
 {
 public:
 	Search(HWND hDlg, TCHAR *szBaseDirectory, TCHAR *szPattern, DWORD dwAttributes,
-		BOOL bUseRegularExpressions, BOOL bCaseInsensitive, BOOL bSearchSubFolders);
+		BOOL bUseRegularExpressions, BOOL bCaseInsensitive, BOOL bSearchSubFolders,
+		const std::wstring &contentPattern, UINT contentSearchMaxFileSizeKB,
+		BOOL bUseIndexedSearch);
 	~Search();
 
 	void StartSearching();
@@ -112,6 +117,9 @@ private:
 	void SearchDirectory(const TCHAR *szDirectory);
 	void SearchDirectoryInternal(const TCHAR *szSearchDirectory,
 		std::list<std::wstring> *pSubFolderList);
+	void SearchIndexed();
+	BOOL MatchFileContent(const TCHAR *szFilePath);
+	BOOL IsTextFile(const TCHAR *szFilePath);
 
 	HWND m_hDlg;
 
@@ -121,6 +129,11 @@ private:
 	BOOL m_bUseRegularExpressions;
 	BOOL m_bCaseInsensitive;
 	BOOL m_bSearchSubFolders;
+	BOOL m_bUseIndexedSearch;
+
+	std::wstring m_contentPattern;
+	std::wregex m_rxContentPattern;
+	UINT m_contentSearchMaxFileSizeKB;
 
 	std::wregex m_rxPattern;
 
@@ -135,7 +148,8 @@ class SearchDialog : public BaseDialog
 {
 public:
 	static SearchDialog *Create(const ResourceLoader *resourceLoader, HWND hParent,
-		std::wstring_view searchDirectory, BrowserList *browserList);
+		std::wstring_view searchDirectory, BrowserList *browserList,
+		UINT contentSearchMaxFileSizeKB);
 
 	/* Sorting methods. */
 	int CALLBACK SortResults(LPARAM lParam1, LPARAM lParam2);
@@ -159,7 +173,8 @@ private:
 	static const int SEARCH_MAX_ITEMS_BATCH_PROCESS = 100;
 
 	SearchDialog(const ResourceLoader *resourceLoader, HWND hParent,
-		std::wstring_view searchDirectory, BrowserList *browserList);
+		std::wstring_view searchDirectory, BrowserList *browserList,
+		UINT contentSearchMaxFileSizeKB);
 	~SearchDialog();
 
 	std::vector<ResizableDialogControl> GetResizableControls() override;
@@ -169,6 +184,7 @@ private:
 	void OnSearch();
 	void StartSearching();
 	void StopSearching();
+	void UpdateIndexedSearchUI();
 	void SaveEntry(int comboBoxId, boost::circular_buffer<std::wstring> &buffer);
 	void UpdateListViewHeader();
 
@@ -188,6 +204,8 @@ private:
 	int m_iPreviousSelectedColumn;
 
 	BOOL m_bSetSearchTimer;
+
+	UINT m_contentSearchMaxFileSizeKB;
 
 	SearchDialogPersistentSettings *m_persistentSettings = nullptr;
 };

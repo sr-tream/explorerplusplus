@@ -53,7 +53,7 @@ void Explorerplusplus::OnSearch()
 			std::wstring currentDirectory = selectedTab.GetShellBrowserImpl()->GetDirectoryPath();
 
 			return SearchDialog::Create(m_app->GetResourceLoader(), m_hContainer, currentDirectory,
-				m_app->GetBrowserList());
+				m_app->GetBrowserList(), m_config->contentSearchMaxFileSizeKB);
 		});
 }
 

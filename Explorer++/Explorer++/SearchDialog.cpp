@@ -25,7 +25,12 @@
 #include "../Helper/WindowHelper.h"
 #include "../Helper/XMLSettings.h"
 #include <algorithm>
+#include <fstream>
 #include <regex>
+#include <searchapi.h>
+#include <oledb.h>
+#include <msdasc.h>
+#include <urlmon.h>
 
 namespace NSearchDialog
 {
@@ -57,17 +62,21 @@ const TCHAR SearchDialogPersistentSettings::SETTING_READ_ONLY[] = _T("ReadOnly")
 const TCHAR SearchDialogPersistentSettings::SETTING_SYSTEM[] = _T("System");
 const TCHAR SearchDialogPersistentSettings::SETTING_SORT_MODE[] = _T("SortMode");
 const TCHAR SearchDialogPersistentSettings::SETTING_SORT_ASCENDING[] = _T("SortAscending");
+const TCHAR SearchDialogPersistentSettings::SETTING_USE_INDEXED_SEARCH[] = _T("UseIndexedSearch");
 const TCHAR SearchDialogPersistentSettings::SETTING_DIRECTORY_LIST[] = _T("Directory");
 const TCHAR SearchDialogPersistentSettings::SETTING_PATTERN_LIST[] = _T("Pattern");
 
 SearchDialog *SearchDialog::Create(const ResourceLoader *resourceLoader, HWND hParent,
-	std::wstring_view searchDirectory, BrowserList *browserList)
+	std::wstring_view searchDirectory, BrowserList *browserList,
+	UINT contentSearchMaxFileSizeKB)
 {
-	return new SearchDialog(resourceLoader, hParent, searchDirectory, browserList);
+	return new SearchDialog(resourceLoader, hParent, searchDirectory, browserList,
+		contentSearchMaxFileSizeKB);
 }
 
 SearchDialog::SearchDialog(const ResourceLoader *resourceLoader, HWND hParent,
-	std::wstring_view searchDirectory, BrowserList *browserList) :
+	std::wstring_view searchDirectory, BrowserList *browserList,
+	UINT contentSearchMaxFileSizeKB) :
 	BaseDialog(resourceLoader, IDD_SEARCH, hParent, DialogSizingType::Both),
 	m_searchDirectory(searchDirectory),
 	m_browserList(browserList),
@@ -76,7 +85,8 @@ SearchDialog::SearchDialog(const ResourceLoader *resourceLoader, HWND hParent,
 	m_pSearch(nullptr),
 	m_iInternalIndex(0),
 	m_iPreviousSelectedColumn(-1),
-	m_bSetSearchTimer(TRUE)
+	m_bSetSearchTimer(TRUE),
+	m_contentSearchMaxFileSizeKB(contentSearchMaxFileSizeKB)
 {
 	m_persistentSettings = &SearchDialogPersistentSettings::GetInstance();
 }
@@ -136,6 +146,8 @@ INT_PTR SearchDialog::OnInitDialog()
 	lCheckDlgButton(m_hDlg, IDC_CHECK_CASEINSENSITIVE, m_persistentSettings->m_bCaseInsensitive);
 	lCheckDlgButton(m_hDlg, IDC_CHECK_USEREGULAREXPRESSIONS,
 		m_persistentSettings->m_bUseRegularExpressions);
+	lCheckDlgButton(m_hDlg, IDC_CHECK_INDEXEDSEARCH, m_persistentSettings->m_bUseIndexedSearch);
+	UpdateIndexedSearchUI();
 
 	for (const auto &strDirectory : m_persistentSettings->m_searchDirectories)
 	{
@@ -151,6 +163,7 @@ INT_PTR SearchDialog::OnInitDialog()
 
 	SetDlgItemText(m_hDlg, IDC_COMBO_NAME, m_persistentSettings->m_searchPattern.c_str());
 	SetDlgItemText(m_hDlg, IDC_COMBO_DIRECTORY, m_searchDirectory.c_str());
+	SetDlgItemText(m_hDlg, IDC_EDIT_CONTENT, m_persistentSettings->m_contentPattern.c_str());
 
 	ComboBox::CreateNew(GetDlgItem(m_hDlg, IDC_COMBO_NAME));
 	ComboBox::CreateNew(GetDlgItem(m_hDlg, IDC_COMBO_DIRECTORY));
@@ -186,6 +199,8 @@ std::vector<ResizableDialogControl> SearchDialog::GetResizableControls()
 		SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(m_hDlg, IDC_COMBO_DIRECTORY), MovingType::None,
 		SizingType::Horizontal);
+	controls.emplace_back(GetDlgItem(m_hDlg, IDC_EDIT_CONTENT), MovingType::None,
+		SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(m_hDlg, IDC_BUTTON_DIRECTORY), MovingType::Horizontal,
 		SizingType::None);
 	controls.emplace_back(GetDlgItem(m_hDlg, IDC_LISTVIEW_SEARCHRESULTS), MovingType::None,
@@ -211,6 +226,10 @@ INT_PTR SearchDialog::OnCommand(WPARAM wParam, LPARAM lParam)
 	{
 	case IDC_BUTTON_DIRECTORY:
 		OnBrowserForFolder();
+		break;
+
+	case IDC_CHECK_INDEXEDSEARCH:
+		UpdateIndexedSearchUI();
 		break;
 
 	case IDSEARCH:
@@ -284,6 +303,8 @@ void SearchDialog::StartSearching()
 
 	BOOL bCaseInsensitive = IsDlgButtonChecked(m_hDlg, IDC_CHECK_CASEINSENSITIVE) == BST_CHECKED;
 
+	BOOL bUseIndexedSearch = IsDlgButtonChecked(m_hDlg, IDC_CHECK_INDEXEDSEARCH) == BST_CHECKED;
+
 	/* Turn search patterns of the form '???' into '*???*', and
 	use this modified string to search. */
 	if (!bUseRegularExpressions && lstrlen(szSearchPattern) > 0)
@@ -319,8 +340,14 @@ void SearchDialog::StartSearching()
 		dwAttributes |= FILE_ATTRIBUTE_SYSTEM;
 	}
 
+	TCHAR szContentPattern[MAX_PATH];
+	GetDlgItemText(m_hDlg, IDC_EDIT_CONTENT, szContentPattern, std::size(szContentPattern));
+	PathRemoveBlanks(szContentPattern);
+	std::wstring contentPattern(szContentPattern);
+
 	m_pSearch = new Search(m_hDlg, szBaseDirectory, szSearchPattern, dwAttributes,
-		bUseRegularExpressions, bCaseInsensitive, bSearchSubFolders);
+		bUseRegularExpressions, bCaseInsensitive, bSearchSubFolders, contentPattern,
+		m_contentSearchMaxFileSizeKB, bUseIndexedSearch);
 	m_pSearch->AddRef();
 
 	/* Save the search directory and search pattern (only if they are not
@@ -850,20 +877,29 @@ DWORD WINAPI NSearchDialog::SearchThread(LPVOID pParam)
 {
 	assert(pParam != nullptr);
 
+	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
 	auto *pSearch = reinterpret_cast<Search *>(pParam);
 	pSearch->StartSearching();
+
+	CoUninitialize();
 
 	return 0;
 }
 
 Search::Search(HWND hDlg, TCHAR *szBaseDirectory, TCHAR *szPattern, DWORD dwAttributes,
-	BOOL bUseRegularExpressions, BOOL bCaseInsensitive, BOOL bSearchSubFolders)
+	BOOL bUseRegularExpressions, BOOL bCaseInsensitive, BOOL bSearchSubFolders,
+	const std::wstring &contentPattern, UINT contentSearchMaxFileSizeKB,
+	BOOL bUseIndexedSearch)
 {
 	m_hDlg = hDlg;
 	m_dwAttributes = dwAttributes;
 	m_bUseRegularExpressions = bUseRegularExpressions;
 	m_bCaseInsensitive = bCaseInsensitive;
 	m_bSearchSubFolders = bSearchSubFolders;
+	m_contentPattern = contentPattern;
+	m_contentSearchMaxFileSizeKB = contentSearchMaxFileSizeKB;
+	m_bUseIndexedSearch = bUseIndexedSearch;
 
 	StringCchCopy(m_szBaseDirectory, std::size(m_szBaseDirectory), szBaseDirectory);
 	StringCchCopy(m_szSearchPattern, std::size(m_szSearchPattern), szPattern);
@@ -903,7 +939,35 @@ void Search::StartSearching()
 		}
 	}
 
-	SearchDirectory(m_szBaseDirectory);
+	if (!m_contentPattern.empty() && m_bUseRegularExpressions)
+	{
+		try
+		{
+			if (m_bCaseInsensitive)
+			{
+				m_rxContentPattern.assign(m_contentPattern, std::regex_constants::icase);
+			}
+			else
+			{
+				m_rxContentPattern.assign(m_contentPattern);
+			}
+		}
+		catch (std::exception)
+		{
+			SendMessage(m_hDlg, NSearchDialog::WM_APP_REGULAREXPRESSIONINVALID, 0, 0);
+
+			return;
+		}
+	}
+
+	if (m_bUseIndexedSearch)
+	{
+		SearchIndexed();
+	}
+	else
+	{
+		SearchDirectory(m_szBaseDirectory);
+	}
 
 	SendMessage(m_hDlg, NSearchDialog::WM_APP_SEARCHFINISHED, 0,
 		MAKELPARAM(m_iFoldersFound, m_iFilesFound));
@@ -1007,6 +1071,22 @@ void Search::SearchDirectoryInternal(const TCHAR *szSearchDirectory,
 
 				BOOL bItemMatch = bMatchFileName && bMatchAttributes;
 
+				if (bItemMatch && !m_contentPattern.empty())
+				{
+					if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+						!= FILE_ATTRIBUTE_DIRECTORY)
+					{
+						TCHAR szFullPath[MAX_PATH];
+						PathCombine(szFullPath, szSearchDirectory, wfd.cFileName);
+						bItemMatch = MatchFileContent(szFullPath);
+					}
+					else
+					{
+						// Directories don't have content to search
+						bItemMatch = FALSE;
+					}
+				}
+
 				if (bItemMatch)
 				{
 					if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -1058,6 +1138,472 @@ void Search::StopSearching()
 	LeaveCriticalSection(&m_csStop);
 }
 
+void Search::SearchIndexed()
+{
+	SendMessage(m_hDlg, NSearchDialog::WM_APP_SEARCHCHANGEDDIRECTORY,
+		reinterpret_cast<WPARAM>(m_szBaseDirectory), 0);
+
+	// Build SQL query for Windows Search
+	std::wstring scopeType = m_bSearchSubFolders ? L"SCOPE" : L"DIRECTORY";
+
+	// Convert path to file: URL form and escape single quotes
+	std::wstring basePath(m_szBaseDirectory);
+	std::wstring escapedPath;
+	for (wchar_t ch : basePath)
+	{
+		if (ch == L'\'')
+			escapedPath += L"''";
+		else
+			escapedPath += ch;
+	}
+
+	std::wstring sql = L"SELECT System.ItemPathDisplay FROM SystemIndex WHERE " + scopeType
+		+ L"='file:" + escapedPath + L"'";
+
+	// Add filename filter: convert wildcards (* → %, ? → _)
+	if (lstrlen(m_szSearchPattern) != 0)
+	{
+		std::wstring pattern(m_szSearchPattern);
+		std::wstring likePattern;
+
+		for (wchar_t ch : pattern)
+		{
+			switch (ch)
+			{
+			case L'*':
+				likePattern += L'%';
+				break;
+			case L'?':
+				likePattern += L'_';
+				break;
+			case L'\'':
+				likePattern += L"''";
+				break;
+			case L'%':
+				likePattern += L"[%]";
+				break;
+			case L'_':
+				likePattern += L"[_]";
+				break;
+			case L'[':
+				likePattern += L"[[]";
+				break;
+			default:
+				likePattern += ch;
+				break;
+			}
+		}
+
+		sql += L" AND System.FileName LIKE '" + likePattern + L"'";
+	}
+
+	// Add content filter using FREETEXT for natural text matching
+	if (!m_contentPattern.empty())
+	{
+		std::wstring escapedContent;
+
+		for (wchar_t ch : m_contentPattern)
+		{
+			if (ch == L'\'')
+				escapedContent += L"''";
+			else
+				escapedContent += ch;
+		}
+
+		sql += L" AND FREETEXT('" + escapedContent + L"')";
+	}
+
+	// Get connection string from Windows Search
+	ISearchManager *pSearchManager = nullptr;
+	HRESULT hr = CoCreateInstance(__uuidof(CSearchManager), nullptr, CLSCTX_LOCAL_SERVER,
+		IID_PPV_ARGS(&pSearchManager));
+
+	if (FAILED(hr))
+	{
+		// Windows Search not available, fall back to regular search
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	ISearchCatalogManager *pCatalog = nullptr;
+	hr = pSearchManager->GetCatalog(L"SystemIndex", &pCatalog);
+	pSearchManager->Release();
+
+	if (FAILED(hr))
+	{
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	ISearchQueryHelper *pQueryHelper = nullptr;
+	hr = pCatalog->GetQueryHelper(&pQueryHelper);
+	pCatalog->Release();
+
+	if (FAILED(hr))
+	{
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	LPWSTR pszConnectionString = nullptr;
+	hr = pQueryHelper->get_ConnectionString(&pszConnectionString);
+	pQueryHelper->Release();
+
+	if (FAILED(hr))
+	{
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	std::wstring connStr(pszConnectionString);
+	CoTaskMemFree(pszConnectionString);
+
+	// Create data source from connection string via IDataInitialize
+	IDataInitialize *pDataInit = nullptr;
+	hr = CoCreateInstance(CLSID_MSDAINITIALIZE, nullptr, CLSCTX_INPROC_SERVER,
+		IID_IDataInitialize, reinterpret_cast<void **>(&pDataInit));
+
+	if (FAILED(hr))
+	{
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	IDBInitialize *pDBInit = nullptr;
+	hr = pDataInit->GetDataSource(nullptr, CLSCTX_INPROC_SERVER, connStr.c_str(),
+		IID_IDBInitialize, reinterpret_cast<IUnknown **>(&pDBInit));
+	pDataInit->Release();
+
+	if (FAILED(hr))
+	{
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	hr = pDBInit->Initialize();
+
+	if (FAILED(hr))
+	{
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	IDBCreateSession *pCreateSession = nullptr;
+	hr = pDBInit->QueryInterface(IID_IDBCreateSession, reinterpret_cast<void **>(&pCreateSession));
+
+	if (FAILED(hr))
+	{
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	IDBCreateCommand *pCreateCommand = nullptr;
+	hr = pCreateSession->CreateSession(nullptr, IID_IDBCreateCommand,
+		reinterpret_cast<IUnknown **>(&pCreateCommand));
+	pCreateSession->Release();
+
+	if (FAILED(hr))
+	{
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	ICommandText *pCommandText = nullptr;
+	hr = pCreateCommand->CreateCommand(nullptr, IID_ICommandText,
+		reinterpret_cast<IUnknown **>(&pCommandText));
+	pCreateCommand->Release();
+
+	if (FAILED(hr))
+	{
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	hr = pCommandText->SetCommandText(DBGUID_DEFAULT, sql.c_str());
+
+	if (FAILED(hr))
+	{
+		pCommandText->Release();
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	DBROWCOUNT rowCount;
+	IRowset *pRowset = nullptr;
+	hr = pCommandText->Execute(nullptr, IID_IRowset, nullptr, &rowCount,
+		reinterpret_cast<IUnknown **>(&pRowset));
+	pCommandText->Release();
+
+	if (FAILED(hr))
+	{
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		SearchDirectory(m_szBaseDirectory);
+		return;
+	}
+
+	// Create accessor for the result column
+	IAccessor *pAccessor = nullptr;
+	hr = pRowset->QueryInterface(IID_IAccessor, reinterpret_cast<void **>(&pAccessor));
+
+	if (FAILED(hr))
+	{
+		pRowset->Release();
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		return;
+	}
+
+	DBBINDING binding = {};
+	binding.iOrdinal = 1;
+	binding.obValue = 0;
+	binding.cbMaxLen = MAX_PATH * sizeof(WCHAR);
+	binding.dwPart = DBPART_VALUE;
+	binding.wType = DBTYPE_WSTR;
+
+	HACCESSOR hAccessor;
+	hr = pAccessor->CreateAccessor(DBACCESSOR_ROWDATA, 1, &binding, 0, &hAccessor, nullptr);
+
+	if (FAILED(hr))
+	{
+		pAccessor->Release();
+		pRowset->Release();
+		pDBInit->Uninitialize();
+		pDBInit->Release();
+		return;
+	}
+
+	// Iterate results
+	HROW hRow;
+	HROW *pRows = &hRow;
+	DBCOUNTITEM rowsObtained;
+	WCHAR pathBuffer[MAX_PATH];
+
+	while (true)
+	{
+		bool bStop = false;
+		EnterCriticalSection(&m_csStop);
+		if (m_bStopSearching)
+			bStop = true;
+		LeaveCriticalSection(&m_csStop);
+
+		if (bStop)
+			break;
+
+		hr = pRowset->GetNextRows(DB_NULL_HCHAPTER, 0, 1, &rowsObtained, &pRows);
+
+		if (FAILED(hr) || rowsObtained == 0)
+			break;
+
+		memset(pathBuffer, 0, sizeof(pathBuffer));
+		hr = pRowset->GetData(hRow, hAccessor, pathBuffer);
+
+		if (SUCCEEDED(hr) && pathBuffer[0] != L'\0')
+		{
+			// Post-filter by attributes if any are specified
+			BOOL bMatchAttributes = TRUE;
+
+			if (m_dwAttributes != 0)
+			{
+				DWORD fileAttrs = GetFileAttributes(pathBuffer);
+
+				if (fileAttrs == INVALID_FILE_ATTRIBUTES
+					|| (fileAttrs & m_dwAttributes) != m_dwAttributes)
+				{
+					bMatchAttributes = FALSE;
+				}
+			}
+
+			if (bMatchAttributes)
+			{
+				unique_pidl_absolute pidl;
+				HRESULT hrParse =
+					SHParseDisplayName(pathBuffer, nullptr, wil::out_param(pidl), 0, nullptr);
+
+				if (SUCCEEDED(hrParse) && pidl)
+				{
+					DWORD attrs = GetFileAttributes(pathBuffer);
+
+					if (attrs != INVALID_FILE_ATTRIBUTES
+						&& (attrs & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+					{
+						m_iFoldersFound++;
+					}
+					else
+					{
+						m_iFilesFound++;
+					}
+
+					PostMessage(m_hDlg, NSearchDialog::WM_APP_SEARCHITEMFOUND,
+						reinterpret_cast<WPARAM>(ILCloneFull(pidl.get())), 0);
+				}
+			}
+		}
+
+		pRowset->ReleaseRows(1, &hRow, nullptr, nullptr, nullptr);
+	}
+
+	pAccessor->ReleaseAccessor(hAccessor, nullptr);
+	pAccessor->Release();
+	pRowset->Release();
+	pDBInit->Uninitialize();
+	pDBInit->Release();
+}
+
+BOOL Search::IsTextFile(const TCHAR *szFilePath)
+{
+	HANDLE hFile =
+		CreateFile(szFilePath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		return FALSE;
+	}
+
+	BYTE buffer[256];
+	DWORD bytesRead = 0;
+	ReadFile(hFile, buffer, sizeof(buffer), &bytesRead, nullptr);
+	CloseHandle(hFile);
+
+	if (bytesRead == 0)
+	{
+		// Empty files are considered text
+		return TRUE;
+	}
+
+	// Try MIME detection via FindMimeFromData
+	LPWSTR mimeType = nullptr;
+	HRESULT hr =
+		FindMimeFromData(nullptr, szFilePath, buffer, bytesRead, nullptr, 0, &mimeType, 0);
+
+	if (SUCCEEDED(hr) && mimeType != nullptr)
+	{
+		std::wstring mime(mimeType);
+		CoTaskMemFree(mimeType);
+
+		if (mime.find(L"text/") == 0 || mime == L"application/json" || mime == L"application/xml"
+			|| mime == L"application/javascript" || mime == L"application/x-javascript")
+		{
+			return TRUE;
+		}
+
+		// If MIME says it's not text, trust that
+		if (mime.find(L"application/") == 0 || mime.find(L"image/") == 0
+			|| mime.find(L"audio/") == 0 || mime.find(L"video/") == 0)
+		{
+			return FALSE;
+		}
+	}
+
+	// Fallback: check for null bytes in the first chunk (binary indicator)
+	for (DWORD i = 0; i < bytesRead; i++)
+	{
+		if (buffer[i] == 0)
+		{
+			// Could be UTF-16: check for BOM
+			if (bytesRead >= 2 && ((buffer[0] == 0xFF && buffer[1] == 0xFE)
+									  || (buffer[0] == 0xFE && buffer[1] == 0xFF)))
+			{
+				return TRUE;
+			}
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+BOOL Search::MatchFileContent(const TCHAR *szFilePath)
+{
+	HANDLE hFile =
+		CreateFile(szFilePath, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		return FALSE;
+	}
+
+	LARGE_INTEGER fileSize;
+	if (!GetFileSizeEx(hFile, &fileSize))
+	{
+		CloseHandle(hFile);
+		return FALSE;
+	}
+
+	// Skip files exceeding the configured size limit (0 = no limit)
+	if (m_contentSearchMaxFileSizeKB > 0
+		&& fileSize.QuadPart
+			> static_cast<LONGLONG>(m_contentSearchMaxFileSizeKB) * 1024)
+	{
+		CloseHandle(hFile);
+		return FALSE;
+	}
+
+	CloseHandle(hFile);
+
+	if (!IsTextFile(szFilePath))
+	{
+		return FALSE;
+	}
+
+	// Read the file content
+	std::wifstream file(szFilePath);
+
+	if (!file.is_open())
+	{
+		return FALSE;
+	}
+
+	// Set locale for wide character reading
+	file.imbue(std::locale(""));
+
+	std::wstring line;
+
+	while (std::getline(file, line))
+	{
+		if (m_bUseRegularExpressions)
+		{
+			if (std::regex_search(line, m_rxContentPattern))
+			{
+				return TRUE;
+			}
+		}
+		else
+		{
+			if (m_bCaseInsensitive)
+			{
+				std::wstring lineLower = line;
+				std::wstring patternLower = m_contentPattern;
+				CharLowerBuffW(lineLower.data(), static_cast<DWORD>(lineLower.size()));
+				CharLowerBuffW(patternLower.data(), static_cast<DWORD>(patternLower.size()));
+
+				if (lineLower.find(patternLower) != std::wstring::npos)
+				{
+					return TRUE;
+				}
+			}
+			else
+			{
+				if (line.find(m_contentPattern) != std::wstring::npos)
+				{
+					return TRUE;
+				}
+			}
+		}
+	}
+
+	return FALSE;
+}
+
 void SearchDialog::SaveState()
 {
 	HWND hListView;
@@ -1072,6 +1618,9 @@ void SearchDialog::SaveState()
 
 	m_persistentSettings->m_bSearchSubFolders =
 		IsDlgButtonChecked(m_hDlg, IDC_CHECK_SEARCHSUBFOLDERS) == BST_CHECKED;
+
+	m_persistentSettings->m_bUseIndexedSearch =
+		IsDlgButtonChecked(m_hDlg, IDC_CHECK_INDEXEDSEARCH) == BST_CHECKED;
 
 	m_persistentSettings->m_bArchive = IsDlgButtonChecked(m_hDlg, IDC_CHECK_ARCHIVE) == BST_CHECKED;
 
@@ -1089,7 +1638,19 @@ void SearchDialog::SaveState()
 
 	m_persistentSettings->m_searchPattern = GetDlgItemString(m_hDlg, IDC_COMBO_NAME);
 
+	m_persistentSettings->m_contentPattern = GetDlgItemString(m_hDlg, IDC_EDIT_CONTENT);
+
 	m_persistentSettings->m_bStateSaved = TRUE;
+}
+
+void SearchDialog::UpdateIndexedSearchUI()
+{
+	BOOL bIndexed = IsDlgButtonChecked(m_hDlg, IDC_CHECK_INDEXEDSEARCH) == BST_CHECKED;
+
+	// Disable regex and case-insensitive checkboxes when indexed search is on
+	// (Windows Search doesn't support regex and is always case-insensitive)
+	EnableWindow(GetDlgItem(m_hDlg, IDC_CHECK_USEREGULAREXPRESSIONS), !bIndexed);
+	EnableWindow(GetDlgItem(m_hDlg, IDC_CHECK_CASEINSENSITIVE), !bIndexed);
 }
 
 SearchDialogPersistentSettings::SearchDialogPersistentSettings() :
@@ -1100,6 +1661,7 @@ SearchDialogPersistentSettings::SearchDialogPersistentSettings() :
 	m_bSearchSubFolders = TRUE;
 	m_bUseRegularExpressions = FALSE;
 	m_bCaseInsensitive = FALSE;
+	m_bUseIndexedSearch = FALSE;
 	m_bArchive = FALSE;
 	m_bHidden = FALSE;
 	m_bReadOnly = FALSE;
@@ -1136,6 +1698,7 @@ void SearchDialogPersistentSettings::SaveExtraRegistrySettings(HKEY hKey)
 	RegistrySettings::SaveDword(hKey, SETTING_SEARCH_SUB_FOLDERS, m_bSearchSubFolders);
 	RegistrySettings::SaveDword(hKey, SETTING_USE_REGULAR_EXPRESSIONS, m_bUseRegularExpressions);
 	RegistrySettings::SaveDword(hKey, SETTING_CASE_INSENSITIVE, m_bCaseInsensitive);
+	RegistrySettings::SaveDword(hKey, SETTING_USE_INDEXED_SEARCH, m_bUseIndexedSearch);
 	RegistrySettings::SaveDword(hKey, SETTING_ARCHIVE, m_bArchive);
 	RegistrySettings::SaveDword(hKey, SETTING_HIDDEN, m_bHidden);
 	RegistrySettings::SaveDword(hKey, SETTING_READ_ONLY, m_bReadOnly);
@@ -1163,6 +1726,8 @@ void SearchDialogPersistentSettings::LoadExtraRegistrySettings(HKEY hKey)
 		m_bUseRegularExpressions);
 	RegistrySettings::Read32BitValueFromRegistry(hKey, SETTING_CASE_INSENSITIVE,
 		m_bCaseInsensitive);
+	RegistrySettings::Read32BitValueFromRegistry(hKey, SETTING_USE_INDEXED_SEARCH,
+		m_bUseIndexedSearch);
 	RegistrySettings::Read32BitValueFromRegistry(hKey, SETTING_ARCHIVE, m_bArchive);
 	RegistrySettings::Read32BitValueFromRegistry(hKey, SETTING_HIDDEN, m_bHidden);
 	RegistrySettings::Read32BitValueFromRegistry(hKey, SETTING_READ_ONLY, m_bReadOnly);
@@ -1197,6 +1762,8 @@ void SearchDialogPersistentSettings::SaveExtraXMLSettings(IXMLDOMDocument *pXMLD
 		XMLSettings::EncodeBoolValue(m_bUseRegularExpressions));
 	XMLSettings::AddAttributeToNode(pXMLDom, pParentNode, SETTING_CASE_INSENSITIVE,
 		XMLSettings::EncodeBoolValue(m_bCaseInsensitive));
+	XMLSettings::AddAttributeToNode(pXMLDom, pParentNode, SETTING_USE_INDEXED_SEARCH,
+		XMLSettings::EncodeBoolValue(m_bUseIndexedSearch));
 	XMLSettings::AddAttributeToNode(pXMLDom, pParentNode, SETTING_ARCHIVE,
 		XMLSettings::EncodeBoolValue(m_bArchive));
 	XMLSettings::AddAttributeToNode(pXMLDom, pParentNode, SETTING_HIDDEN,
@@ -1245,6 +1812,10 @@ void SearchDialogPersistentSettings::LoadExtraXMLSettings(BSTR bstrName, BSTR bs
 	else if (lstrcmpi(bstrName, SETTING_CASE_INSENSITIVE) == 0)
 	{
 		m_bCaseInsensitive = XMLSettings::DecodeBoolValue(bstrValue);
+	}
+	else if (lstrcmpi(bstrName, SETTING_USE_INDEXED_SEARCH) == 0)
+	{
+		m_bUseIndexedSearch = XMLSettings::DecodeBoolValue(bstrValue);
 	}
 	else if (lstrcmpi(bstrName, SETTING_ARCHIVE) == 0)
 	{

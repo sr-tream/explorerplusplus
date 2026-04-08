@@ -243,6 +243,10 @@ void LoadFromNode(IXMLDOMNode *settingsNode, Config &config)
 		config.globalFolderSettings.displayMixedFilesAndFolders);
 	GetBoolSetting(settingsNode, L"UseNaturalSortOrder",
 		config.globalFolderSettings.useNaturalSortOrder);
+	GetIntSetting(settingsNode, L"contentSearchMaxFileSizeKB",
+		config.contentSearchMaxFileSizeKB);
+	GetBoolSetting(settingsNode, L"UseIndexedSearchByDefault",
+		config.useIndexedSearchByDefault);
 	GetBoolSetting(settingsNode, L"OpenTabsInForeground", config.openTabsInForeground);
 
 	if (bool sortAscending;
@@ -469,6 +473,12 @@ void SaveToNode(IXMLDOMDocument *xmlDocument, IXMLDOMElement *settingsNode, cons
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"UseNaturalSortOrder",
 		XMLSettings::EncodeBoolValue(config.globalFolderSettings.useNaturalSortOrder));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"contentSearchMaxFileSizeKB",
+		XMLSettings::EncodeIntValue(config.contentSearchMaxFileSizeKB));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"UseIndexedSearchByDefault",
+		XMLSettings::EncodeBoolValue(config.useIndexedSearchByDefault));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"OpenTabsInForeground", XMLSettings::EncodeBoolValue(config.openTabsInForeground));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,

@@ -153,6 +153,14 @@ void FilesFoldersOptionsPage::InitializeControls()
 	AddTooltipForControl(m_tooltipWindow, GetDlgItem(GetDialog(), IDC_USE_NATURAL_SORT_ORDER),
 		m_resourceLoader->LoadString(IDS_USE_NATURAL_SORT_ORDER_TOOLTIP));
 
+	SetDlgItemInt(GetDialog(), IDC_OPTIONS_CONTENT_SEARCH_SIZE,
+		m_config->contentSearchMaxFileSizeKB, FALSE);
+
+	if (m_config->useIndexedSearchByDefault)
+	{
+		CheckDlgButton(GetDialog(), IDC_OPTIONS_INDEXEDSEARCH_DEFAULT, BST_CHECKED);
+	}
+
 	HWND fileSizesComboBox = GetDlgItem(GetDialog(), IDC_COMBO_FILESIZES);
 	std::vector<ComboBoxItem> fileSizeItems;
 
@@ -204,6 +212,7 @@ void FilesFoldersOptionsPage::OnCommand(WPARAM wParam, LPARAM lParam)
 		case IDC_OPTIONS_HOVER_TIME:
 		case IDC_DISPLAY_MIXED_FILES_AND_FOLDERS:
 		case IDC_USE_NATURAL_SORT_ORDER:
+		case IDC_OPTIONS_INDEXEDSEARCH_DEFAULT:
 			m_settingChangedCallback();
 			break;
 
@@ -364,6 +373,12 @@ void FilesFoldersOptionsPage::SaveSettings()
 
 	m_config->globalFolderSettings.useNaturalSortOrder =
 		(IsDlgButtonChecked(GetDialog(), IDC_USE_NATURAL_SORT_ORDER) == BST_CHECKED);
+
+	m_config->contentSearchMaxFileSizeKB =
+		GetDlgItemInt(GetDialog(), IDC_OPTIONS_CONTENT_SEARCH_SIZE, nullptr, FALSE);
+
+	m_config->useIndexedSearchByDefault =
+		(IsDlgButtonChecked(GetDialog(), IDC_OPTIONS_INDEXEDSEARCH_DEFAULT) == BST_CHECKED);
 
 	hCBSize = GetDlgItem(GetDialog(), IDC_COMBO_FILESIZES);
 

@@ -143,6 +143,10 @@ void LoadFromKey(HKEY settingsKey, Config &config)
 		config.globalFolderSettings.displayMixedFilesAndFolders);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"UseNaturalSortOrder",
 		config.globalFolderSettings.useNaturalSortOrder);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"contentSearchMaxFileSizeKB",
+		config.contentSearchMaxFileSizeKB);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"UseIndexedSearchByDefault",
+		config.useIndexedSearchByDefault);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"GoUpOnDoubleClick",
 		config.goUpOnDoubleClick);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowHiddenGlobal",
@@ -302,6 +306,10 @@ void SaveToKey(HKEY settingsKey, const Config &config)
 		config.globalFolderSettings.displayMixedFilesAndFolders);
 	RegistrySettings::SaveDword(settingsKey, L"UseNaturalSortOrder",
 		config.globalFolderSettings.useNaturalSortOrder);
+	RegistrySettings::SaveDword(settingsKey, L"contentSearchMaxFileSizeKB",
+		config.contentSearchMaxFileSizeKB);
+	RegistrySettings::SaveDword(settingsKey, L"UseIndexedSearchByDefault",
+		config.useIndexedSearchByDefault);
 	RegistrySettings::SaveDword(settingsKey, L"GoUpOnDoubleClick", config.goUpOnDoubleClick);
 	RegistrySettings::SaveDword(settingsKey, L"ShowHiddenGlobal",
 		config.defaultFolderSettings.showHidden);
