@@ -134,6 +134,7 @@ private:
 	void OnSelectionChanged(const NMTREEVIEW *eventInfo);
 	void OnSelectionChangedTimer();
 	void HandleSelectionChanged(const NMTREEVIEW *eventInfo);
+	void OnClick(const NMHDR *nmhdr);
 	void OnItemExpanding(const NMTREEVIEW *nmtv);
 	LRESULT OnKeyDown(const NMTVKEYDOWN *keyDown);
 	void OnMiddleButtonDown(const POINT *pt);

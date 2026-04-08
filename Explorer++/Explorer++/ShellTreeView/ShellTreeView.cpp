@@ -246,6 +246,10 @@ LRESULT ShellTreeView::ParentWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 			case TVN_SELCHANGED:
 				OnSelectionChanged(reinterpret_cast<NMTREEVIEW *>(lParam));
 				break;
+
+			case NM_CLICK:
+				OnClick(reinterpret_cast<NMHDR *>(lParam));
+				break;
 			}
 		}
 		break;
@@ -630,6 +634,48 @@ void ShellTreeView::HandleSelectionChanged(const NMTREEVIEW *eventInfo)
 	{
 		TreeView_Expand(m_hTreeView, eventInfo->itemNew.hItem, TVE_EXPAND);
 	}
+}
+
+void ShellTreeView::OnClick(const NMHDR *nmhdr)
+{
+	UNREFERENCED_PARAMETER(nmhdr);
+
+	// When the user clicks on an item that is already selected, TVN_SELCHANGED won't fire.
+	// This is a problem when the user switches tabs and then clicks the same treeview item
+	// to navigate the new tab to that folder. Handle this by checking whether the selected
+	// item differs from the active tab's directory and navigating if so.
+	HTREEITEM selectedItem = TreeView_GetSelection(m_hTreeView);
+
+	if (!selectedItem)
+	{
+		return;
+	}
+
+	// Hit-test to make sure the click was actually on the selected item (not on empty space).
+	DWORD pos = GetMessagePos();
+	POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
+	ScreenToClient(m_hTreeView, &pt);
+
+	TVHITTESTINFO hitTest = {};
+	hitTest.pt = pt;
+	HTREEITEM hitItem = TreeView_HitTest(m_hTreeView, &hitTest);
+
+	if (hitItem != selectedItem)
+	{
+		return;
+	}
+
+	auto *shellBrowser = GetSelectedShellBrowser();
+	auto pidlCurrentDirectory = shellBrowser->GetDirectoryIdl();
+	auto pidlDirectory = GetNodePidl(selectedItem);
+
+	if (ArePidlsEquivalent(pidlDirectory.get(), pidlCurrentDirectory.get()))
+	{
+		return;
+	}
+
+	auto navigateParams = NavigateParams::Normal(pidlDirectory.get());
+	shellBrowser->GetNavigationController()->Navigate(navigateParams);
 }
 
 void ShellTreeView::OnItemExpanding(const NMTREEVIEW *nmtv)
