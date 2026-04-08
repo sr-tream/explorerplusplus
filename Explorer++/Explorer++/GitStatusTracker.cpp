@@ -249,6 +249,14 @@ GitStatusMap GitStatusTracker::GetStatusForDirectory(const std::wstring &directo
 {
 	GitStatusMap statusMap;
 
+	// Skip UNC/network paths (including WSL paths like \\wsl$\ and \\wsl.localhost\).
+	// Running Windows git.exe against these filesystems is extremely slow due to network
+	// traversal looking for .git directories.
+	if (directoryPath.size() >= 2 && directoryPath[0] == L'\\' && directoryPath[1] == L'\\')
+	{
+		return statusMap;
+	}
+
 	// Get the repo root — also serves as the cache key. This is fast (~5ms).
 	std::wstring repoRoot = GetRepoRoot(directoryPath);
 
