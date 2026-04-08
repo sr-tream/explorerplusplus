@@ -297,6 +297,20 @@ void TabContainer::OnTabSelected(const Tab &tab)
 	m_iPreviousTabSelectionId = tab.GetId();
 
 	m_tabEvents->NotifySelected(tab);
+
+	// Trigger deferred navigation after selection state is fully updated, so that
+	// observers see the correct active tab when navigation events fire.
+	if (!m_deferredNavigationsSuspended)
+	{
+		auto it = m_deferredNavigations.find(tab.GetId());
+
+		if (it != m_deferredNavigations.end())
+		{
+			auto navigateParams = std::move(it->second);
+			m_deferredNavigations.erase(it);
+			tab.GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
+		}
+	}
 }
 
 MainTabView *TabContainer::GetView()
@@ -315,7 +329,8 @@ void TabContainer::CreateNewTabInDefaultDirectory(const TabSettings &tabSettings
 // network location has been disconnected). Therefore, it's not safe to make any assumptions about
 // the actual directory the tab is in once it's been created.
 Tab &TabContainer::CreateNewTab(const std::wstring &directory, const TabSettings &tabSettings,
-	const FolderSettings *folderSettings, const FolderColumns *initialColumns)
+	const FolderSettings *folderSettings, const FolderColumns *initialColumns,
+	bool deferNavigation)
 {
 	unique_pidl_absolute pidl;
 	HRESULT hr = ParseDisplayNameForNavigation(directory.c_str(), pidl);
@@ -331,7 +346,8 @@ Tab &TabContainer::CreateNewTab(const std::wstring &directory, const TabSettings
 	}
 
 	auto navigateParams = NavigateParams::Normal(pidl.get());
-	return CreateNewTab(navigateParams, tabSettings, folderSettings, initialColumns);
+	return CreateNewTab(navigateParams, tabSettings, folderSettings, initialColumns,
+		deferNavigation);
 }
 
 Tab &TabContainer::CreateNewTab(const PreservedTab &preservedTab)
@@ -368,7 +384,8 @@ Tab &TabContainer::CreateNewTab(const PreservedTab &preservedTab)
 }
 
 Tab &TabContainer::CreateNewTab(NavigateParams &navigateParams, const TabSettings &tabSettings,
-	const FolderSettings *folderSettings, const FolderColumns *initialColumns)
+	const FolderSettings *folderSettings, const FolderColumns *initialColumns,
+	bool deferNavigation)
 {
 	FolderSettings folderSettingsFinal;
 
@@ -402,11 +419,11 @@ Tab &TabContainer::CreateNewTab(NavigateParams &navigateParams, const TabSetting
 	auto *rawTab = tab.get();
 	m_tabs.insert({ tab->GetId(), std::move(tab) });
 
-	return SetUpNewTab(*rawTab, navigateParams, tabSettings);
+	return SetUpNewTab(*rawTab, navigateParams, tabSettings, deferNavigation);
 }
 
 Tab &TabContainer::SetUpNewTab(Tab &tab, NavigateParams &navigateParams,
-	const TabSettings &tabSettings)
+	const TabSettings &tabSettings, bool deferNavigation)
 {
 	int index;
 
@@ -464,7 +481,14 @@ Tab &TabContainer::SetUpNewTab(Tab &tab, NavigateParams &navigateParams,
 		OnTabSelected(tab);
 	}
 
-	tab.GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
+	if (deferNavigation)
+	{
+		m_deferredNavigations.insert_or_assign(tab.GetId(), navigateParams);
+	}
+	else
+	{
+		tab.GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
+	}
 
 	return tab;
 }
@@ -495,6 +519,8 @@ bool TabContainer::CloseTab(const Tab &tab, CloseMode closeMode)
 	}
 
 	m_tabEvents->NotifyPreRemoval(tab, GetTabIndex(tab));
+
+	m_deferredNavigations.erase(tab.GetId());
 
 	RemoveTabFromControl(tab);
 
@@ -850,6 +876,11 @@ std::vector<TabStorageData> TabContainer::GetStorageData() const
 	}
 
 	return tabListStorageData;
+}
+
+void TabContainer::SetDeferredNavigationSuspended(bool suspended)
+{
+	m_deferredNavigationsSuspended = suspended;
 }
 
 void TabContainer::OnWindowDestroyed()

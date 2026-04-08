@@ -9,6 +9,7 @@
 #include "OneShotTimer.h"
 #include "OneShotTimerManager.h"
 #include "ShellBrowser/FolderSettings.h"
+#include "ShellBrowser/NavigateParams.h"
 #include "Tab.h"
 #include "TabView.h"
 #include "TabViewDelegate.h"
@@ -24,7 +25,6 @@ class BrowserWindow;
 class CachedIcons;
 struct Config;
 class MainTabView;
-struct NavigateParams;
 class NavigationEvents;
 class NavigationRequest;
 class PlatformContext;
@@ -69,11 +69,16 @@ public:
 	void CreateNewTabInDefaultDirectory(const TabSettings &tabSettings);
 	Tab &CreateNewTab(const std::wstring &directory, const TabSettings &tabSettings = {},
 		const FolderSettings *folderSettings = nullptr,
-		const FolderColumns *initialColumns = nullptr);
+		const FolderColumns *initialColumns = nullptr, bool deferNavigation = false);
 	Tab &CreateNewTab(const PreservedTab &preservedTab);
 	Tab &CreateNewTab(NavigateParams &navigateParams, const TabSettings &tabSettings = {},
 		const FolderSettings *folderSettings = nullptr,
-		const FolderColumns *initialColumns = nullptr);
+		const FolderColumns *initialColumns = nullptr, bool deferNavigation = false);
+
+	// Suppress deferred navigation triggers during bulk tab creation (e.g. startup restore).
+	// While suspended, tab selection won't trigger deferred navigations. Call with false
+	// after the restore loop and final tab selection are complete.
+	void SetDeferredNavigationSuspended(bool suspended);
 
 	Tab &GetTab(int tabId) const;
 	Tab *MaybeGetTab(int tabId) const;
@@ -138,7 +143,8 @@ private:
 
 	void Initialize(HWND parent);
 
-	Tab &SetUpNewTab(Tab &tab, NavigateParams &navigateParams, const TabSettings &tabSettings);
+	Tab &SetUpNewTab(Tab &tab, NavigateParams &navigateParams, const TabSettings &tabSettings,
+		bool deferNavigation = false);
 
 	void OnTabDoubleClicked(Tab *tab, const MouseEvent &event);
 	void OnTabMiddleClicked(Tab *tab, const MouseEvent &event);
@@ -191,6 +197,11 @@ private:
 
 	std::vector<int> m_tabSelectionHistory;
 	int m_iPreviousTabSelectionId;
+
+	// Deferred navigation: tabs whose initial directory enumeration is postponed until
+	// first selection, to avoid blocking startup with N sequential enumerations.
+	std::unordered_map<int, NavigateParams> m_deferredNavigations;
+	bool m_deferredNavigationsSuspended = false;
 
 	// Drop handling
 	std::optional<DropTargetContext> m_dropTargetContext;

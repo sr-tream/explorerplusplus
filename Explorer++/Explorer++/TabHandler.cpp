@@ -155,6 +155,11 @@ void Explorerplusplus::CreateInitialTabs(const WindowStorageData *storageData)
 void Explorerplusplus::CreateTabsFromStorageData(const WindowStorageData &storageData)
 {
 	int index = 0;
+	auto *tabContainer = GetActivePane()->GetTabContainer();
+
+	// Suspend deferred navigation triggers during bulk tab creation so that the
+	// first-tab auto-selection doesn't accidentally trigger a deferred navigation.
+	tabContainer->SetDeferredNavigationSuspended(true);
 
 	for (const auto &loadedTab : storageData.tabs)
 	{
@@ -169,25 +174,32 @@ void Explorerplusplus::CreateTabsFromStorageData(const WindowStorageData &storag
 		auto validatedColumns = loadedTab.columns;
 		ValidateColumns(validatedColumns);
 
+		// Only navigate the selected tab immediately; defer others until first selection.
+		bool deferNavigation = (index != storageData.selectedTab);
+
 		if (loadedTab.pidl.HasValue())
 		{
 			auto navigateParams = NavigateParams::Normal(loadedTab.pidl.Raw());
-			GetActivePane()->GetTabContainer()->CreateNewTab(navigateParams, tabSettings,
-				&loadedTab.folderSettings, &validatedColumns);
+			tabContainer->CreateNewTab(navigateParams, tabSettings, &loadedTab.folderSettings,
+				&validatedColumns, deferNavigation);
 		}
 		else
 		{
-			GetActivePane()->GetTabContainer()->CreateNewTab(loadedTab.directory, tabSettings,
-				&loadedTab.folderSettings, &validatedColumns);
+			tabContainer->CreateNewTab(loadedTab.directory, tabSettings,
+				&loadedTab.folderSettings, &validatedColumns, deferNavigation);
 		}
 
 		index++;
 	}
 
+	// Resume deferred navigation handling before selecting the final tab, so future
+	// tab switches will trigger deferred navigation as expected.
+	tabContainer->SetDeferredNavigationSuspended(false);
+
 	if (storageData.selectedTab >= 0
-		&& storageData.selectedTab < GetActivePane()->GetTabContainer()->GetNumTabs())
+		&& storageData.selectedTab < tabContainer->GetNumTabs())
 	{
-		GetActivePane()->GetTabContainer()->SelectTabAtIndex(storageData.selectedTab);
+		tabContainer->SelectTabAtIndex(storageData.selectedTab);
 	}
 }
 

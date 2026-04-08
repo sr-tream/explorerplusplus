@@ -8,6 +8,12 @@
 #include <set>
 #include <sstream>
 
+// Static member definitions
+std::mutex GitStatusTracker::s_cacheMutex;
+std::unordered_map<std::wstring, GitStatusTracker::CachedRepoStatus, CaseInsensitiveHash,
+	CaseInsensitiveEqual>
+	GitStatusTracker::s_repoCache;
+
 size_t CaseInsensitiveHash::operator()(const std::wstring &str) const
 {
 	std::wstring lower = str;
@@ -175,47 +181,150 @@ std::wstring GitStatusTracker::ExtractFilename(const std::wstring &repoRelativeP
 	return repoRelativePath;
 }
 
+std::wstring GitStatusTracker::NormalizePath(const std::wstring &path)
+{
+	std::wstring normalized = path;
+	std::replace(normalized.begin(), normalized.end(), L'\\', L'/');
+
+	while (!normalized.empty() && normalized.back() == L'/')
+	{
+		normalized.pop_back();
+	}
+
+	return normalized;
+}
+
+std::wstring GitStatusTracker::GetRepoRoot(const std::wstring &directoryPath)
+{
+	std::wstring output = RunGitCommand(directoryPath, L"rev-parse --show-toplevel");
+
+	if (output.empty())
+	{
+		return L"";
+	}
+
+	while (!output.empty() && (output.back() == L'\n' || output.back() == L'\r'))
+	{
+		output.pop_back();
+	}
+
+	return output;
+}
+
+std::wstring GitStatusTracker::ComputeDirectoryPrefix(const std::wstring &directoryPath,
+	const std::wstring &repoRoot)
+{
+	std::wstring normalizedDir = NormalizePath(directoryPath);
+	std::wstring normalizedRoot = NormalizePath(repoRoot);
+
+	if (_wcsicmp(normalizedDir.c_str(), normalizedRoot.c_str()) == 0)
+	{
+		return L"";
+	}
+
+	if (normalizedDir.size() <= normalizedRoot.size()
+		|| normalizedDir[normalizedRoot.size()] != L'/'
+		|| _wcsnicmp(normalizedDir.c_str(), normalizedRoot.c_str(), normalizedRoot.size()) != 0)
+	{
+		return L"";
+	}
+
+	std::wstring prefix = normalizedDir.substr(normalizedRoot.size() + 1);
+
+	if (!prefix.empty())
+	{
+		prefix += L'/';
+	}
+
+	return prefix;
+}
+
+void GitStatusTracker::ClearCache()
+{
+	std::lock_guard<std::mutex> lock(s_cacheMutex);
+	s_repoCache.clear();
+}
+
 GitStatusMap GitStatusTracker::GetStatusForDirectory(const std::wstring &directoryPath)
 {
 	GitStatusMap statusMap;
 
-	// Use --porcelain for stable, parseable output. Include untracked and ignored files.
-	std::wstring output =
-		RunGitCommand(directoryPath, L"status --porcelain -u --ignored");
+	// Get the repo root — also serves as the cache key. This is fast (~5ms).
+	std::wstring repoRoot = GetRepoRoot(directoryPath);
+
+	if (repoRoot.empty())
+	{
+		return statusMap;
+	}
+
+	std::wstring normalizedRoot = NormalizePath(repoRoot);
+
+	// Try to get git status output from the per-repo cache. Multiple tabs in the
+	// same repository will share a single 'git status' invocation via shared_future,
+	// avoiding redundant process spawns during multi-tab startup.
+	std::shared_future<std::wstring> statusFuture;
+	std::shared_ptr<std::promise<std::wstring>> myPromise;
+
+	{
+		std::lock_guard<std::mutex> lock(s_cacheMutex);
+
+		auto it = s_repoCache.find(normalizedRoot);
+
+		if (it != s_repoCache.end())
+		{
+			auto now = std::chrono::steady_clock::now();
+
+			if (now - it->second.createdAt <= CACHE_TTL)
+			{
+				statusFuture = it->second.statusFuture;
+			}
+			else
+			{
+				// Expired — replace with new fetch
+				myPromise = std::make_shared<std::promise<std::wstring>>();
+				statusFuture = myPromise->get_future().share();
+				it->second = { statusFuture, now };
+			}
+		}
+		else
+		{
+			myPromise = std::make_shared<std::promise<std::wstring>>();
+			statusFuture = myPromise->get_future().share();
+			s_repoCache[normalizedRoot] = { statusFuture,
+				std::chrono::steady_clock::now() };
+		}
+	}
+
+	if (myPromise)
+	{
+		try
+		{
+			std::wstring result =
+				RunGitCommand(directoryPath, L"status --porcelain -u --ignored");
+			myPromise->set_value(std::move(result));
+		}
+		catch (...)
+		{
+			myPromise->set_value(L"");
+		}
+	}
+
+	std::wstring output = statusFuture.get();
 
 	if (output.empty())
 	{
 		return statusMap;
 	}
 
-	// Get the repo-relative path of the current directory so we can filter
-	// to only files directly in this directory.
-	std::wstring repoRelDir;
-	std::wstring relPathOutput =
-		RunGitCommand(directoryPath, L"rev-parse --show-prefix");
+	// Compute the repo-relative directory prefix via path arithmetic instead of
+	// spawning a separate 'git rev-parse --show-prefix' process.
+	std::wstring directoryPrefix = ComputeDirectoryPrefix(directoryPath, repoRoot);
 
-	if (!relPathOutput.empty())
-	{
-		// Remove trailing newline
-		while (!relPathOutput.empty()
-			&& (relPathOutput.back() == L'\n' || relPathOutput.back() == L'\r'))
-		{
-			relPathOutput.pop_back();
-		}
-
-		// Remove trailing slash
-		if (!relPathOutput.empty() && relPathOutput.back() == L'/')
-		{
-			relPathOutput.pop_back();
-		}
-
-		repoRelDir = relPathOutput;
-	}
-
-	std::wstring directoryPrefix = repoRelDir.empty() ? L"" : repoRelDir + L"/";
 	std::set<std::wstring, CaseInsensitiveLess> foldersWithNonIgnoredContent;
+	// Use --full-name so paths are relative to the repo root, matching the prefix
+	// format used for filtering.
 	std::wstring nonIgnoredOutput =
-		RunGitCommand(directoryPath, L"ls-files --cached --others --exclude-standard");
+		RunGitCommand(directoryPath, L"ls-files --full-name --cached --others --exclude-standard");
 
 	if (!nonIgnoredOutput.empty())
 	{

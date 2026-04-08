@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <chrono>
+#include <future>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -52,12 +56,31 @@ class GitStatusTracker
 {
 public:
 	// Returns a map of filename -> git status bitmask for files in the given directory.
-	// Runs `git status` in the directory. Returns empty map if not a git repo or git is not
-	// installed.
+	// Uses a per-repo cache so that multiple tabs in the same repository share a single
+	// 'git status' invocation instead of each spawning their own.
 	static GitStatusMap GetStatusForDirectory(const std::wstring &directoryPath);
 
+	// Clears the repo-level git status cache. Useful for tests or forced refresh.
+	static void ClearCache();
+
 private:
+	struct CachedRepoStatus
+	{
+		std::shared_future<std::wstring> statusFuture;
+		std::chrono::steady_clock::time_point createdAt;
+	};
+
 	static std::wstring RunGitCommand(const std::wstring &directoryPath, const std::wstring &args);
 	static DWORD ParseStatusCodes(char indexStatus, char workTreeStatus);
 	static std::wstring ExtractFilename(const std::wstring &repoRelativePath);
+	static std::wstring GetRepoRoot(const std::wstring &directoryPath);
+	static std::wstring NormalizePath(const std::wstring &path);
+	static std::wstring ComputeDirectoryPrefix(const std::wstring &directoryPath,
+		const std::wstring &repoRoot);
+
+	static std::mutex s_cacheMutex;
+	static std::unordered_map<std::wstring, CachedRepoStatus, CaseInsensitiveHash,
+		CaseInsensitiveEqual>
+		s_repoCache;
+	static constexpr auto CACHE_TTL = std::chrono::seconds(5);
 };
