@@ -108,7 +108,8 @@ private:
 	void OnCancel();
 
 	void ApplyEdits(std::wstring newDescription, std::wstring newFilterPattern,
-		bool newFilterPatternCaseInsensitive, DWORD newFilterAttributes, COLORREF newColor);
+		bool newFilterPatternCaseInsensitive, DWORD newFilterAttributes, DWORD newFilterGitStatus,
+		COLORREF newColor);
 
 	ColorRuleModel *m_model;
 	std::unique_ptr<EditDetails> m_editDetails;

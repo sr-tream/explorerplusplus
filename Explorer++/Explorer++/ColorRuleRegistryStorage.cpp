@@ -19,6 +19,7 @@ const wchar_t SETTING_DESCRIPTION[] = L"Description";
 const wchar_t SETTING_FILENAME_PATTERN[] = L"FilenamePattern";
 const wchar_t SETTING_CASE_INSENSITIVE[] = L"CaseInsensitive";
 const wchar_t SETTING_ATTRIBUTES[] = L"Attributes";
+const wchar_t SETTING_GIT_STATUS[] = L"GitStatus";
 const wchar_t SETTING_COLOR[] = L"Color";
 
 std::unique_ptr<ColorRule> LoadColorRule(HKEY key)
@@ -64,8 +65,12 @@ std::unique_ptr<ColorRule> LoadColorRule(HKEY key)
 		return nullptr;
 	}
 
+	// Git status is optional for backward compatibility with older configs
+	DWORD gitStatus = 0;
+	RegistrySettings::ReadDword(key, SETTING_GIT_STATUS, gitStatus);
+
 	return std::make_unique<ColorRule>(description, filenamePattern, caseInsensitive, attributes,
-		color);
+		color, gitStatus);
 }
 
 void LoadFromKey(HKEY parentKey, ColorRuleModel *model)
@@ -94,6 +99,11 @@ void SaveColorRule(HKEY key, const ColorRule *colorRule)
 	RegistrySettings::SaveDword(key, SETTING_CASE_INSENSITIVE,
 		colorRule->GetFilterPatternCaseInsensitive());
 	RegistrySettings::SaveDword(key, SETTING_ATTRIBUTES, colorRule->GetFilterAttributes());
+
+	if (colorRule->GetFilterGitStatus() != 0)
+	{
+		RegistrySettings::SaveDword(key, SETTING_GIT_STATUS, colorRule->GetFilterGitStatus());
+	}
 
 	COLORREF color = colorRule->GetColor();
 	RegistrySettings::SaveBinaryValue(key, SETTING_COLOR, reinterpret_cast<const BYTE *>(&color),

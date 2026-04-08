@@ -10,7 +10,8 @@ public:
 	using UpdatedSignal = boost::signals2::signal<void(ColorRule *colorRule)>;
 
 	ColorRule(const std::wstring &description, const std::wstring &filterPattern,
-		bool filterPatternCaseInsensitive, DWORD filterAttributes, COLORREF color);
+		bool filterPatternCaseInsensitive, DWORD filterAttributes, COLORREF color,
+		DWORD filterGitStatus = 0);
 
 	std::wstring GetDescription() const;
 	void SetDescription(const std::wstring &description);
@@ -20,6 +21,8 @@ public:
 	void SetFilterPatternCaseInsensitive(bool caseInsensitive);
 	DWORD GetFilterAttributes() const;
 	void SetFilterAttributes(DWORD attributes);
+	DWORD GetFilterGitStatus() const;
+	void SetFilterGitStatus(DWORD gitStatus);
 	COLORREF GetColor() const;
 	void SetColor(COLORREF color);
 
@@ -30,6 +33,7 @@ private:
 	std::wstring m_filterPattern;
 	bool m_filterPatternCaseInsensitive;
 	DWORD m_filterAttributes;
+	DWORD m_filterGitStatus;
 	COLORREF m_color;
 
 	UpdatedSignal m_updatedSignal;

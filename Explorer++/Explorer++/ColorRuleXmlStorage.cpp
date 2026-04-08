@@ -19,6 +19,7 @@ const wchar_t SETTING_DESCRIPTION[] = L"name";
 const wchar_t SETTING_FILENAME_PATTERN[] = L"FilenamePattern";
 const wchar_t SETTING_CASE_INSENSITIVE[] = L"CaseInsensitive";
 const wchar_t SETTING_ATTRIBUTES[] = L"Attributes";
+const wchar_t SETTING_GIT_STATUS[] = L"GitStatus";
 
 std::unique_ptr<ColorRule> LoadColorRule(IXMLDOMNode *parentNode)
 {
@@ -71,8 +72,12 @@ std::unique_ptr<ColorRule> LoadColorRule(IXMLDOMNode *parentNode)
 		return nullptr;
 	}
 
+	// Git status is optional for backward compatibility with older configs
+	int gitStatus = 0;
+	XMLSettings::GetIntFromMap(attributeMap.get(), SETTING_GIT_STATUS, gitStatus);
+
 	return std::make_unique<ColorRule>(description, filenamePattern, caseInsensitive, attributes,
-		color);
+		color, static_cast<DWORD>(gitStatus));
 }
 
 void LoadFromNode(IXMLDOMNode *parentNode, ColorRuleModel *model)
@@ -113,6 +118,13 @@ void SaveColorRule(IXMLDOMDocument *xmlDocument, IXMLDOMElement *parentNode,
 		XMLSettings::EncodeBoolValue(colorRule->GetFilterPatternCaseInsensitive()));
 	XMLSettings::AddAttributeToNode(xmlDocument, colorRuleNode.get(), SETTING_ATTRIBUTES,
 		XMLSettings::EncodeIntValue(colorRule->GetFilterAttributes()));
+
+	if (colorRule->GetFilterGitStatus() != 0)
+	{
+		XMLSettings::AddAttributeToNode(xmlDocument, colorRuleNode.get(), SETTING_GIT_STATUS,
+			XMLSettings::EncodeIntValue(colorRule->GetFilterGitStatus()));
+	}
+
 	XMLSettings::SaveRgb(xmlDocument, colorRuleNode.get(), colorRule->GetColor());
 }
 

@@ -1252,6 +1252,7 @@
     <ClCompile Include="BrowserPane.cpp" />
     <ClCompile Include="ClipboardOperations.cpp" />
     <ClCompile Include="ColorRule.cpp" />
+    <ClCompile Include="GitStatusTracker.cpp" />
     <ClCompile Include="ColorRuleListView.cpp" />
     <ClCompile Include="ColorRuleModelFactory.cpp" />
     <ClCompile Include="ColorRuleRegistryStorage.cpp" />
@@ -1617,6 +1618,7 @@
     <ClInclude Include="BrowserWindow.h" />
     <ClInclude Include="ClipboardOperations.h" />
     <ClInclude Include="ColorRule.h" />
+    <ClInclude Include="GitStatusTracker.h" />
     <ClInclude Include="ColorRuleListView.h" />
     <ClInclude Include="ColorRuleModel.h" />
     <ClInclude Include="ColorRuleModelFactory.h" />

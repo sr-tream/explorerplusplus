@@ -160,6 +160,10 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	case WM_APP_INFO_TIP_READY:
 		ProcessInfoTipResult(static_cast<int>(wParam));
 		break;
+
+	case WM_APP_GIT_STATUS_READY:
+		ProcessGitStatusResult(static_cast<int>(wParam));
+		break;
 	}
 
 	return DefSubclassProc(hwnd, uMsg, wParam, lParam);
@@ -1545,13 +1549,15 @@ LRESULT ShellBrowserImpl::OnListViewCustomDraw(NMLVCUSTOMDRAW *listViewCustomDra
 
 	case CDDS_ITEMPREPAINT:
 	{
-		const auto &itemInfo =
-			GetItemByIndex(static_cast<int>(listViewCustomDraw->nmcd.dwItemSpec));
+		int itemIndex = static_cast<int>(listViewCustomDraw->nmcd.dwItemSpec);
+		const auto &itemInfo = GetItemByIndex(itemIndex);
+		int internalIndex = GetItemInternalIndex(itemIndex);
 
 		for (const auto &colorRule : m_app->GetColorRuleModel()->GetItems())
 		{
 			bool matchedFileName = false;
 			bool matchedAttributes = false;
+			bool matchedGitStatus = false;
 
 			if (!colorRule->GetFilterPattern().empty())
 			{
@@ -1581,7 +1587,23 @@ LRESULT ShellBrowserImpl::OnListViewCustomDraw(NMLVCUSTOMDRAW *listViewCustomDra
 				matchedAttributes = true;
 			}
 
-			if (matchedFileName && matchedAttributes)
+			if (colorRule->GetFilterGitStatus() != 0)
+			{
+				auto gitStatusItr = m_gitStatusMap.find(internalIndex);
+
+				if (gitStatusItr != m_gitStatusMap.end()
+					&& WI_IsAnyFlagSet(gitStatusItr->second,
+						colorRule->GetFilterGitStatus()))
+				{
+					matchedGitStatus = true;
+				}
+			}
+			else
+			{
+				matchedGitStatus = true;
+			}
+
+			if (matchedFileName && matchedAttributes && matchedGitStatus)
 			{
 				listViewCustomDraw->clrText = colorRule->GetColor();
 				return CDRF_NEWFONT;

@@ -9,6 +9,7 @@
 #include "Columns.h"
 #include "DirectoryWatcher.h"
 #include "FolderSettings.h"
+#include "GitStatusTracker.h"
 #include "MainFontSetter.h"
 #include "NavigationManager.h"
 #include "ScopedBrowserCommandTarget.h"
@@ -357,6 +358,7 @@ private:
 	static const UINT WM_APP_COLUMN_RESULT_READY = WM_APP + 150;
 	static const UINT WM_APP_THUMBNAIL_RESULT_READY = WM_APP + 151;
 	static const UINT WM_APP_INFO_TIP_READY = WM_APP + 152;
+	static const UINT WM_APP_GIT_STATUS_READY = WM_APP + 153;
 
 	ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 		FileActionHandler *fileActionHandler, const FolderSettings &folderSettings,
@@ -500,6 +502,12 @@ private:
 	void ProcessColumnResult(int columnResultId);
 	std::optional<int> GetColumnIndexByType(ColumnType columnType) const;
 	std::optional<ColumnType> GetColumnTypeByIndex(int index) const;
+
+	// Git status support
+	void QueueGitStatusTask();
+	static GitStatusResult GetGitStatusAsync(HWND listView, int gitStatusResultId,
+		const std::wstring &directory);
+	void ProcessGitStatusResult(int gitStatusResultId);
 
 	// Directory change handling
 	void StartDirectoryMonitoring();
@@ -666,6 +674,12 @@ private:
 	ctpl::thread_pool m_infoTipsThreadPool;
 	std::unordered_map<int, std::future<std::optional<InfoTipResult>>> m_infoTipResults;
 	int m_infoTipResultIDCounter;
+
+	ctpl::thread_pool m_gitStatusThreadPool;
+	std::unordered_map<int, std::future<GitStatusResult>> m_gitStatusResults;
+	int m_gitStatusResultIDCounter;
+	// Per-item git status, keyed by internal item index
+	std::unordered_map<int, DWORD> m_gitStatusMap;
 
 	/* Internal state. */
 	const HINSTANCE m_resourceInstance;

@@ -6,6 +6,7 @@
 #include "ColorRuleEditorDialog.h"
 #include "ColorRule.h"
 #include "ColorRuleModel.h"
+#include "GitStatusTracker.h"
 #include "MainResource.h"
 #include "ResourceLoader.h"
 #include "../Helper/StringHelper.h"
@@ -88,6 +89,41 @@ INT_PTR ColorRuleEditorDialog::OnInitDialog()
 	if (WI_IsFlagSet(targetColorRule->GetFilterAttributes(), FILE_ATTRIBUTE_SYSTEM))
 	{
 		CheckDlgButton(m_hDlg, IDC_CHECK_SYSTEM, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Modified))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_MODIFIED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Staged))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_STAGED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Untracked))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_UNTRACKED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Deleted))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_DELETED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Conflicted))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_CONFLICTED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Added))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_ADDED, BST_CHECKED);
+	}
+
+	if (WI_IsFlagSet(targetColorRule->GetFilterGitStatus(), GitStatus::Ignored))
+	{
+		CheckDlgButton(m_hDlg, IDC_CHECK_GIT_IGNORED, BST_CHECKED);
 	}
 
 	HWND staticColorControl = GetDlgItem(m_hDlg, IDC_STATIC_COLOR);
@@ -182,13 +218,51 @@ void ColorRuleEditorDialog::OnOk()
 		WI_SetFlag(attributes, FILE_ATTRIBUTE_SYSTEM);
 	}
 
-	ApplyEdits(description, filenamePattern, caseInsensitive, attributes, color);
+	DWORD gitStatus = 0;
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_MODIFIED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Modified);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_STAGED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Staged);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_UNTRACKED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Untracked);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_DELETED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Deleted);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_CONFLICTED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Conflicted);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_ADDED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Added);
+	}
+
+	if (IsDlgButtonChecked(m_hDlg, IDC_CHECK_GIT_IGNORED) == BST_CHECKED)
+	{
+		WI_SetFlag(gitStatus, GitStatus::Ignored);
+	}
+
+	ApplyEdits(description, filenamePattern, caseInsensitive, attributes, gitStatus, color);
 
 	EndDialog(m_hDlg, 1);
 }
 
 void ColorRuleEditorDialog::ApplyEdits(std::wstring newDescription, std::wstring newFilterPattern,
-	bool newFilterPatternCaseInsensitive, DWORD newFilterAttributes, COLORREF newColor)
+	bool newFilterPatternCaseInsensitive, DWORD newFilterAttributes, DWORD newFilterGitStatus,
+	COLORREF newColor)
 {
 	ColorRule *targetColorRule = m_editDetails->type == EditDetails::Type::NewItem
 		? m_editDetails->newColorRule.get()
@@ -198,6 +272,7 @@ void ColorRuleEditorDialog::ApplyEdits(std::wstring newDescription, std::wstring
 	targetColorRule->SetFilterPattern(newFilterPattern);
 	targetColorRule->SetFilterPatternCaseInsensitive(newFilterPatternCaseInsensitive);
 	targetColorRule->SetFilterAttributes(newFilterAttributes);
+	targetColorRule->SetFilterGitStatus(newFilterGitStatus);
 	targetColorRule->SetColor(newColor);
 
 	if (m_editDetails->type == EditDetails::Type::NewItem)

@@ -6,11 +6,13 @@
 #include "ColorRule.h"
 
 ColorRule::ColorRule(const std::wstring &description, const std::wstring &filterPattern,
-	bool filterPatternCaseInsensitive, DWORD filterAttributes, COLORREF color) :
+	bool filterPatternCaseInsensitive, DWORD filterAttributes, COLORREF color,
+	DWORD filterGitStatus) :
 	m_description(description),
 	m_filterPattern(filterPattern),
 	m_filterPatternCaseInsensitive(filterPatternCaseInsensitive),
 	m_filterAttributes(filterAttributes),
+	m_filterGitStatus(filterGitStatus),
 	m_color(color)
 {
 }
@@ -79,6 +81,23 @@ void ColorRule::SetFilterAttributes(DWORD attributes)
 	}
 
 	m_filterAttributes = attributes;
+
+	m_updatedSignal(this);
+}
+
+DWORD ColorRule::GetFilterGitStatus() const
+{
+	return m_filterGitStatus;
+}
+
+void ColorRule::SetFilterGitStatus(DWORD gitStatus)
+{
+	if (gitStatus == m_filterGitStatus)
+	{
+		return;
+	}
+
+	m_filterGitStatus = gitStatus;
 
 	m_updatedSignal(this);
 }

@@ -90,6 +90,10 @@ void ShellBrowserImpl::ClearPendingResults()
 
 	m_infoTipsThreadPool.clear_queue();
 	m_infoTipResults.clear();
+
+	m_gitStatusThreadPool.clear_queue();
+	m_gitStatusResults.clear();
+	m_gitStatusMap.clear();
 }
 
 void ShellBrowserImpl::StoreCurrentlySelectedItems()
@@ -498,6 +502,8 @@ void ShellBrowserImpl::AddNavigationItems(const NavigationRequest *request,
 	{
 		SelectItems({ request->GetNavigateParams().originalPidl });
 	}
+
+	QueueGitStatusTask();
 }
 
 std::vector<ShellBrowserImpl::ItemInfo_t> ShellBrowserImpl::GetItemInformationFromPidls(
@@ -772,4 +778,89 @@ void ShellBrowserImpl::SetNavigationState(NavigationState navigationState)
 	}
 
 	m_navigationState = navigationState;
+}
+
+void ShellBrowserImpl::QueueGitStatusTask()
+{
+	// Skip virtual (non-filesystem) folders — git doesn't apply
+	if (m_directoryState.virtualFolder)
+	{
+		return;
+	}
+
+	int gitStatusResultId = m_gitStatusResultIDCounter++;
+	std::wstring directory = m_directoryState.directory;
+
+	auto result = m_gitStatusThreadPool.push(
+		[listView = m_listView, gitStatusResultId, directory](int id)
+		{
+			UNREFERENCED_PARAMETER(id);
+			return GetGitStatusAsync(listView, gitStatusResultId, directory);
+		});
+
+	m_gitStatusResults.insert({ gitStatusResultId, std::move(result) });
+}
+
+GitStatusResult ShellBrowserImpl::GetGitStatusAsync(HWND listView, int gitStatusResultId,
+	const std::wstring &directory)
+{
+	GitStatusResult result;
+	result.directory = directory;
+	result.statusMap = GitStatusTracker::GetStatusForDirectory(directory);
+
+	PostMessage(listView, WM_APP_GIT_STATUS_READY, gitStatusResultId, 0);
+
+	return result;
+}
+
+void ShellBrowserImpl::ProcessGitStatusResult(int gitStatusResultId)
+{
+	auto itr = m_gitStatusResults.find(gitStatusResultId);
+
+	if (itr == m_gitStatusResults.end())
+	{
+		// Result is for a previous folder. Ignore it.
+		return;
+	}
+
+	auto result = itr->second.get();
+	m_gitStatusResults.erase(itr);
+
+	// Verify the result is still for the current directory
+	if (_wcsicmp(result.directory.c_str(), m_directoryState.directory.c_str()) != 0)
+	{
+		return;
+	}
+
+	m_gitStatusMap.clear();
+
+	if (result.statusMap.empty())
+	{
+		// Not a git repo or no changed files — just repaint to clear any old status
+		InvalidateRect(m_listView, nullptr, false);
+		return;
+	}
+
+	// Map git status results to internal item indices by matching filenames
+	for (const auto &[internalIndex, itemInfo] : m_itemInfoMap)
+	{
+		// Extract filename from the full parsing name
+		std::wstring filename = itemInfo.parsingName;
+		auto lastSlash = filename.find_last_of(L'\\');
+
+		if (lastSlash != std::wstring::npos)
+		{
+			filename = filename.substr(lastSlash + 1);
+		}
+
+		auto statusItr = result.statusMap.find(filename);
+
+		if (statusItr != result.statusMap.end())
+		{
+			m_gitStatusMap[internalIndex] = statusItr->second;
+		}
+	}
+
+	// Repaint the listview to update colors
+	InvalidateRect(m_listView, nullptr, false);
 }
