@@ -26,6 +26,9 @@ public:
 		(const std::wstring &itemPath, OpenFolderDisposition openFolderDisposition), (override));
 	MOCK_METHOD(void, OpenItem,
 		(PCIDLIST_ABSOLUTE pidlItem, OpenFolderDisposition openFolderDisposition), (override));
+	MOCK_METHOD(bool, SelectTabByPath, (const std::wstring &itemPath), (override));
+	MOCK_METHOD(bool, ShowItemInFolder,
+		(const std::wstring &itemPath, OpenFolderDisposition openFolderDisposition), (override));
 	MOCK_METHOD(void, OpenFileItem, (const std::wstring &itemPath, const std::wstring &parameters),
 		(override));
 	MOCK_METHOD(void, OpenFileItem, (PCIDLIST_ABSOLUTE pidlItem, const std::wstring &parameters),

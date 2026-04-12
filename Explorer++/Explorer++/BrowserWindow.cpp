@@ -4,7 +4,80 @@
 
 #include "stdafx.h"
 #include "BrowserWindow.h"
+#include "ShellBrowser/ShellBrowserImpl.h"
+#include "ShellBrowser/ShellNavigationController.h"
 #include "ShellBrowser/ShellBrowser.h"
+#include "Tab.h"
+#include "TabContainer.h"
+#include "../Helper/ShellHelper.h"
+
+namespace
+{
+
+std::optional<std::wstring> MaybeResolveParsingPath(PCIDLIST_ABSOLUTE pidl)
+{
+	std::wstring resolvedPath;
+	HRESULT hr = GetDisplayName(pidl, SHGDN_FORPARSING, resolvedPath);
+
+	if (FAILED(hr) || resolvedPath.empty())
+	{
+		return std::nullopt;
+	}
+
+	return resolvedPath;
+}
+
+Tab *FindTabByResolvedPath(TabContainer *tabContainer, const std::wstring &resolvedPath)
+{
+	if (!tabContainer)
+	{
+		return nullptr;
+	}
+
+	for (const auto *tab : tabContainer->GetAllTabsInOrder())
+	{
+		auto *shellBrowserImpl = tab->GetShellBrowserImpl();
+
+		if (!shellBrowserImpl)
+		{
+			continue;
+		}
+
+		if (StrCmpIW(shellBrowserImpl->GetDirectoryPath().c_str(), resolvedPath.c_str()) == 0)
+		{
+			return const_cast<Tab *>(tab);
+		}
+	}
+
+	return nullptr;
+}
+
+bool SetCurrentEntrySelection(Tab *tab, PCIDLIST_ABSOLUTE pidlItem)
+{
+	if (!tab)
+	{
+		return false;
+	}
+
+	auto *navigationController = tab->GetShellBrowser()->GetNavigationController();
+
+	if (!navigationController)
+	{
+		return false;
+	}
+
+	auto *currentEntry = navigationController->GetCurrentEntry();
+
+	if (!currentEntry)
+	{
+		return false;
+	}
+
+	currentEntry->SetSelectedItems({ pidlItem });
+	return true;
+}
+
+}
 
 BrowserWindow::BrowserWindow() : m_id(idCounter++), m_commandTargetManager(this)
 {
@@ -73,4 +146,119 @@ void BrowserWindow::OpenItem(const std::wstring &itemPath)
 void BrowserWindow::OpenItem(PCIDLIST_ABSOLUTE pidlItem)
 {
 	OpenItem(pidlItem, OpenFolderDisposition::CurrentTab);
+}
+
+bool BrowserWindow::SelectTabByPath(const std::wstring &itemPath)
+{
+	unique_pidl_absolute pidlItem;
+	HRESULT hr = ParseDisplayNameForNavigation(itemPath, pidlItem);
+
+	if (FAILED(hr) || !pidlItem)
+	{
+		return false;
+	}
+
+	auto resolvedPath = MaybeResolveParsingPath(pidlItem.get());
+
+	if (!resolvedPath)
+	{
+		return false;
+	}
+
+	auto *tabContainer = GetActiveTabContainer();
+	auto *tab = FindTabByResolvedPath(tabContainer, *resolvedPath);
+
+	if (!tab)
+	{
+		return false;
+	}
+
+	tabContainer->SelectTab(*tab);
+
+	auto *shellBrowserImpl = tab->GetShellBrowserImpl();
+
+	if (!shellBrowserImpl)
+	{
+		return true;
+	}
+
+	shellBrowserImpl->PostNotifyShellOfCurrentLocation();
+	return true;
+}
+
+bool BrowserWindow::ShowItemInFolder(const std::wstring &itemPath,
+	OpenFolderDisposition openFolderDisposition)
+{
+	unique_pidl_absolute pidlItem;
+	HRESULT hr = ParseDisplayNameForNavigation(itemPath, pidlItem);
+
+	if (FAILED(hr) || !pidlItem)
+	{
+		return false;
+	}
+
+	unique_pidl_absolute pidlParent(ILCloneFull(pidlItem.get()));
+
+	if (!pidlParent || !ILRemoveLastID(pidlParent.get()))
+	{
+		return false;
+	}
+
+	auto parentPath = MaybeResolveParsingPath(pidlParent.get());
+
+	if (!parentPath)
+	{
+		return false;
+	}
+
+	auto *tabContainer = GetActiveTabContainer();
+	Tab *targetTab = FindTabByResolvedPath(tabContainer, *parentPath);
+	bool reusedExistingTab = targetTab != nullptr;
+
+	if (targetTab)
+	{
+		if (!SetCurrentEntrySelection(targetTab, pidlItem.get()))
+		{
+			return false;
+		}
+
+		tabContainer->SelectTab(*targetTab);
+	}
+	else
+	{
+		OpenItem(*parentPath, openFolderDisposition);
+
+		tabContainer = GetActiveTabContainer();
+
+		if (!tabContainer)
+		{
+			return false;
+		}
+
+		targetTab = &tabContainer->GetSelectedTab();
+
+		if (!SetCurrentEntrySelection(targetTab, pidlItem.get()))
+		{
+			return false;
+		}
+	}
+
+	auto *shellBrowserImpl = targetTab->GetShellBrowserImpl();
+
+	if (!shellBrowserImpl)
+	{
+		return false;
+	}
+
+	if (reusedExistingTab)
+	{
+		shellBrowserImpl->PostNotifyShellOfCurrentLocation();
+	}
+
+	if (StrCmpIW(shellBrowserImpl->GetDirectoryPath().c_str(), parentPath->c_str()) == 0)
+	{
+		shellBrowserImpl->SelectItems({ pidlItem.get() });
+	}
+
+	return true;
 }

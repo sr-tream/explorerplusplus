@@ -55,16 +55,20 @@ bool OpenItemLocationContextMenuDelegate::MaybeHandleShellMenuItem(PCIDLIST_ABSO
 void OpenItemLocationContextMenuDelegate::HandleCustomMenuItem(PCIDLIST_ABSOLUTE directory,
 	const std::vector<PidlChild> &items, UINT menuItemId)
 {
-	UNREFERENCED_PARAMETER(items);
-
 	switch (menuItemId)
 	{
 	case OPEN_ITEM_LOCATION_MENU_ITEM_ID:
 	{
-		// TODO: The target item should be selected.
+		auto pidlComplete = directory + items[0];
 		auto *browser = m_browserList->GetLastActive();
 		CHECK(browser);
-		browser->OpenItem(directory);
+
+		auto itemPath = GetDisplayNameWithFallback(pidlComplete.Raw(), SHGDN_FORPARSING);
+
+		if (!browser->ShowItemInFolder(itemPath))
+		{
+			browser->OpenItem(directory);
+		}
 	}
 	break;
 

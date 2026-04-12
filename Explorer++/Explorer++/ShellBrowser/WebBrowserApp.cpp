@@ -203,23 +203,17 @@ IFACEMETHODIMP WebBrowserApp::Stop()
 
 IFACEMETHODIMP WebBrowserApp::get_Application(IDispatch **dispatch)
 {
-	UNREFERENCED_PARAMETER(dispatch);
-
-	return E_NOTIMPL;
+	return QueryInterface(IID_IDispatch, reinterpret_cast<void **>(dispatch));
 }
 
 IFACEMETHODIMP WebBrowserApp::get_Parent(IDispatch **dispatch)
 {
-	UNREFERENCED_PARAMETER(dispatch);
-
-	return E_NOTIMPL;
+	return QueryInterface(IID_IDispatch, reinterpret_cast<void **>(dispatch));
 }
 
 IFACEMETHODIMP WebBrowserApp::get_Container(IDispatch **dispatch)
 {
-	UNREFERENCED_PARAMETER(dispatch);
-
-	return E_NOTIMPL;
+	return QueryInterface(IID_IDispatch, reinterpret_cast<void **>(dispatch));
 }
 
 IFACEMETHODIMP WebBrowserApp::get_Document(IDispatch **dispatch)
@@ -230,9 +224,8 @@ IFACEMETHODIMP WebBrowserApp::get_Document(IDispatch **dispatch)
 
 IFACEMETHODIMP WebBrowserApp::get_TopLevelContainer(VARIANT_BOOL *topLevelContainer)
 {
-	UNREFERENCED_PARAMETER(topLevelContainer);
-
-	return E_NOTIMPL;
+	*topLevelContainer = VARIANT_TRUE;
+	return S_OK;
 }
 
 IFACEMETHODIMP WebBrowserApp::get_Type(BSTR *type)
@@ -314,9 +307,8 @@ IFACEMETHODIMP WebBrowserApp::get_LocationURL(BSTR *locationURL)
 
 IFACEMETHODIMP WebBrowserApp::get_Busy(VARIANT_BOOL *busy)
 {
-	UNREFERENCED_PARAMETER(busy);
-
-	return E_NOTIMPL;
+	*busy = VARIANT_FALSE;
+	return S_OK;
 }
 
 // IDispatch

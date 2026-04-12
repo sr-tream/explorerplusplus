@@ -14,6 +14,7 @@
 #include "TabEvents.h"
 #include "TabStorage.h"
 #include "WindowStorage.h"
+#include "../Helper/ShellHelper.h"
 
 BrowserWindowFake::BrowserWindowFake(const Config *config, TabEvents *tabEvents,
 	ShellBrowserEvents *shellBrowserEvents, NavigationEvents *navigationEvents,
@@ -176,6 +177,80 @@ void BrowserWindowFake::OpenItem(PCIDLIST_ABSOLUTE pidlItem,
 	case OpenFolderDisposition::NewTabAlternate:
 		break;
 	}
+}
+
+bool BrowserWindowFake::SelectTabByPath(const std::wstring &itemPath)
+{
+	unique_pidl_absolute pidlItem;
+	HRESULT hr = ParseDisplayNameForNavigation(itemPath, pidlItem);
+
+	if (FAILED(hr) || !pidlItem)
+	{
+		return false;
+	}
+
+	std::wstring resolvedPath;
+	hr = GetDisplayName(pidlItem.get(), SHGDN_FORPARSING, resolvedPath);
+
+	if (FAILED(hr) || resolvedPath.empty())
+	{
+		return false;
+	}
+
+	for (const auto *tab : GetActiveTabContainer()->GetAllTabsInOrder())
+	{
+		auto *entry = tab->GetShellBrowser()->GetNavigationController()->GetCurrentEntry();
+
+		if (!entry)
+		{
+			continue;
+		}
+
+		auto currentPath = GetDisplayNameWithFallback(entry->GetPidl().Raw(), SHGDN_FORPARSING);
+
+		if (lstrcmpi(currentPath.c_str(), resolvedPath.c_str()) == 0)
+		{
+			GetActiveTabContainer()->SelectTab(*tab);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool BrowserWindowFake::ShowItemInFolder(const std::wstring &itemPath,
+	OpenFolderDisposition openFolderDisposition)
+{
+	unique_pidl_absolute pidlItem;
+	HRESULT hr = ParseDisplayNameForNavigation(itemPath, pidlItem);
+
+	if (FAILED(hr) || !pidlItem)
+	{
+		return false;
+	}
+
+	unique_pidl_absolute pidlParent(ILCloneFull(pidlItem.get()));
+
+	if (!pidlParent || !ILRemoveLastID(pidlParent.get()))
+	{
+		return false;
+	}
+
+	std::wstring parentPath;
+	hr = GetDisplayName(pidlParent.get(), SHGDN_FORPARSING, parentPath);
+
+	if (FAILED(hr) || parentPath.empty())
+	{
+		return false;
+	}
+
+	if (SelectTabByPath(parentPath))
+	{
+		return true;
+	}
+
+	OpenItem(parentPath, openFolderDisposition);
+	return true;
 }
 
 void BrowserWindowFake::OpenFileItem(const std::wstring &itemPath, const std::wstring &parameters)

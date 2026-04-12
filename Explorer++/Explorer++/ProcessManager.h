@@ -32,7 +32,8 @@ private:
 	void OnCopyData(const COPYDATASTRUCT *cds);
 
 	void AttemptToNotifyExistingProcess(HWND existingWindow,
-		const std::vector<std::wstring> &directories = {});
+		const std::vector<std::wstring> &directories = {},
+		const std::vector<std::wstring> &filesToSelect = {});
 
 	const BrowserList *const m_browserList;
 	bool m_initializationRun = false;

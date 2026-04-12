@@ -38,6 +38,7 @@
 #include "../Helper/FileDialogs.h"
 #include "../Helper/ListViewHelper.h"
 #include "../Helper/ShellHelper.h"
+#include "../Helper/StringHelper.h"
 #include <wil/com.h>
 #include <list>
 
@@ -651,8 +652,24 @@ void ShellBrowserImpl::SelectItems(const std::vector<PidlAbsolute> &pidls)
 
 		if (!index)
 		{
-			m_directoryState.filesToSelect.emplace_back(pidl);
-			continue;
+			std::wstring parsingPath;
+			HRESULT hr = GetDisplayName(pidl.Raw(), SHGDN_FORPARSING, parsingPath);
+
+			if (SUCCEEDED(hr) && !parsingPath.empty())
+			{
+				index = GetItemIndexForParsingPath(parsingPath);
+
+				if (!index)
+				{
+					m_directoryState.parsingPathsToSelect.push_back(parsingPath);
+				}
+			}
+
+			if (!index)
+			{
+				m_directoryState.filesToSelect.emplace_back(pidl);
+				continue;
+			}
 		}
 
 		ListViewHelper::SelectItem(m_listView, *index, true);
@@ -715,6 +732,21 @@ std::optional<int> ShellBrowserImpl::GetItemIndexForPidl(PCIDLIST_ABSOLUTE pidl)
 	}
 
 	return LocateItemByInternalIndex(*internalIndex);
+}
+
+std::optional<int> ShellBrowserImpl::GetItemIndexForParsingPath(const std::wstring &parsingPath) const
+{
+	for (int i = 0; i < m_directoryState.numItems; i++)
+	{
+		const auto &item = GetItemByIndex(i);
+
+		if (lstrcmpi(item.parsingName.c_str(), parsingPath.c_str()) == 0)
+		{
+			return i;
+		}
+	}
+
+	return std::nullopt;
 }
 
 std::optional<int> ShellBrowserImpl::GetItemInternalIndexForPidl(PCIDLIST_ABSOLUTE pidl) const

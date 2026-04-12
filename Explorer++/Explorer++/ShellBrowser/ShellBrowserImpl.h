@@ -124,6 +124,8 @@ public:
 	/* Get/Set current state. */
 	unique_pidl_absolute GetDirectoryIdl() const;
 	std::wstring GetDirectoryPath() const;
+	void NotifyShellOfCurrentLocation();
+	void PostNotifyShellOfCurrentLocation();
 	int GetUniqueFolderId() const;
 	void CycleViewMode(bool cycleForward);
 	SortMode GetGroupMode() const;
@@ -297,6 +299,7 @@ private:
 		// at the time the call is made to select the file. This field keeps track of items in the
 		// current directory which need to be selected, once added.
 		std::vector<PidlAbsolute> filesToSelect;
+		std::vector<std::wstring> parsingPathsToSelect;
 
 		// When an item is created, it may need to be placed into rename mode (e.g. when created via
 		// the "New" menu). However, it can take time for the directory change notification to be
@@ -335,6 +338,7 @@ private:
 	static const UINT WM_APP_THUMBNAIL_RESULT_READY = WM_APP + 151;
 	static const UINT WM_APP_INFO_TIP_READY = WM_APP + 152;
 	static const UINT WM_APP_GIT_STATUS_READY = WM_APP + 153;
+	static const UINT WM_APP_NOTIFY_SHELL_CURRENT = WM_APP + 154;
 
 	ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 		FileActionHandler *fileActionHandler, const FolderSettings &folderSettings,
@@ -597,6 +601,7 @@ private:
 	BOOL CompareVirtualFolders(UINT uFolderCSIDL) const;
 	int LocateFileItemInternalIndex(const TCHAR *szFileName) const;
 	std::optional<int> GetItemIndexForPidl(PCIDLIST_ABSOLUTE pidl) const;
+	std::optional<int> GetItemIndexForParsingPath(const std::wstring &parsingPath) const;
 	std::optional<int> GetItemInternalIndexForPidl(PCIDLIST_ABSOLUTE pidl) const;
 	std::optional<int> LocateItemByInternalIndex(int internalIndex) const;
 	void ApplyHeaderSortArrow();

@@ -164,6 +164,10 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	case WM_APP_GIT_STATUS_READY:
 		ProcessGitStatusResult(static_cast<int>(wParam));
 		break;
+
+	case WM_APP_NOTIFY_SHELL_CURRENT:
+		NotifyShellOfCurrentLocation();
+		break;
 	}
 
 	return DefSubclassProc(hwnd, uMsg, wParam, lParam);
@@ -482,7 +486,8 @@ void ShellBrowserImpl::ShowBackgroundContextMenu(const POINT &pt)
 	serviceProvider->RegisterService(IID_IFolderView,
 		winrt::make<FolderView>(m_weakPtrFactory.GetWeakPtr()));
 	serviceProvider->RegisterService(SID_DefView,
-		winrt::make<ShellView>(m_weakPtrFactory.GetWeakPtr(), false));
+		winrt::make<ShellView>(m_weakPtrFactory.GetWeakPtr(), m_app->GetBrowserList(),
+			m_browser->GetId(), m_directoryState.pidlDirectory.Raw(), false));
 
 	ShellBackgroundContextMenu::Flags flags = ShellBackgroundContextMenu::Flags::None;
 

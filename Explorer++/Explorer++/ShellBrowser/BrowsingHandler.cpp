@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "ShellBrowserImpl.h"
 #include "App.h"
+#include "BrowserWindow.h"
 #include "ColumnDataRetrieval.h"
 #include "Config.h"
 #include "DocumentServiceProvider.h"
@@ -24,6 +25,7 @@
 #include "../Helper/ListViewHelper.h"
 #include "../Helper/ScopedRedrawDisabler.h"
 #include "../Helper/ShellHelper.h"
+#include "../Helper/StringHelper.h"
 #include "../Helper/WinRTBaseWrapper.h"
 #include "../Helper/WindowHelper.h"
 #include <wil/com.h>
@@ -135,6 +137,9 @@ void ShellBrowserImpl::NotifyShellOfNavigation(PCIDLIST_ABSOLUTE pidl)
 
 	if (FAILED(hr))
 	{
+		LOG(WARNING) << "ShellBrowserImpl: RegisterShellWindowIfNecessary failed directory="
+					 << wstrToUtf8Str(GetDisplayNameWithFallback(pidl, SHGDN_FORPARSING))
+					 << " hr=" << hr;
 		return;
 	}
 
@@ -143,10 +148,40 @@ void ShellBrowserImpl::NotifyShellOfNavigation(PCIDLIST_ABSOLUTE pidl)
 
 	if (FAILED(hr))
 	{
+		LOG(WARNING) << "ShellBrowserImpl: InitVariantFromBuffer failed during OnNavigate directory="
+					 << wstrToUtf8Str(GetDisplayNameWithFallback(pidl, SHGDN_FORPARSING))
+					 << " hr=" << hr;
 		return;
 	}
 
 	m_shellWindows->OnNavigate(m_shellWindowCookie.get(), &pidlVariant);
+}
+
+void ShellBrowserImpl::NotifyShellOfCurrentLocation()
+{
+	if (!m_directoryState.pidlDirectory.HasValue())
+	{
+		return;
+	}
+
+	NotifyShellOfNavigation(m_directoryState.pidlDirectory.Raw());
+}
+
+void ShellBrowserImpl::PostNotifyShellOfCurrentLocation()
+{
+	if (!m_directoryState.pidlDirectory.HasValue())
+	{
+		return;
+	}
+
+	if (!PostMessage(m_listView, WM_APP_NOTIFY_SHELL_CURRENT, 0, 0))
+	{
+		LOG(WARNING) << "ShellBrowserImpl: failed to post shell notification for directory="
+					 << wstrToUtf8Str(
+							GetDisplayNameWithFallback(m_directoryState.pidlDirectory.Raw(),
+								SHGDN_FORPARSING))
+					 << " error=" << GetLastError();
+	}
 }
 
 HRESULT ShellBrowserImpl::RegisterShellWindowIfNecessary(PCIDLIST_ABSOLUTE pidl)
@@ -221,8 +256,10 @@ HRESULT ShellBrowserImpl::RegisterShellWindow(PCIDLIST_ABSOLUTE pidl)
 		SWC_BROWSER, &m_shellWindowCookie));
 
 	auto document = winrt::make_self<DocumentServiceProvider>();
-	document->RegisterService(IID_IFolderView,
-		winrt::make_self<ShellView>(m_weakPtrFactory.GetWeakPtr(), true));
+	auto shellView = winrt::make_self<ShellView>(m_weakPtrFactory.GetWeakPtr(),
+		m_app->GetBrowserList(), m_browser->GetId(), pidl, true);
+	document->RegisterService(IID_IFolderView, shellView.as<IUnknown>());
+	document->RegisterService(SID_DefView, shellView.as<IUnknown>());
 
 	auto browserApp = winrt::make_self<WebBrowserApp>(m_owner, document.get());
 
@@ -471,8 +508,12 @@ void ShellBrowserImpl::InsertAwaitingItems()
 		auto selectItr = std::find_if(m_directoryState.filesToSelect.begin(),
 			m_directoryState.filesToSelect.end(), [&itemInfo](const auto &pidl)
 			{ return ArePidlsEquivalent(pidl.Raw(), itemInfo.pidlComplete.Raw()); });
+		auto parsingPathSelectItr = std::find_if(m_directoryState.parsingPathsToSelect.begin(),
+			m_directoryState.parsingPathsToSelect.end(), [&itemInfo](const auto &parsingPath)
+			{ return lstrcmpi(parsingPath.c_str(), itemInfo.parsingName.c_str()) == 0; });
 
-		if (selectItr != m_directoryState.filesToSelect.end())
+		if (selectItr != m_directoryState.filesToSelect.end()
+			|| parsingPathSelectItr != m_directoryState.parsingPathsToSelect.end())
 		{
 			ListViewHelper::SelectItem(m_listView, iItemIndex, true);
 
@@ -484,7 +525,15 @@ void ShellBrowserImpl::InsertAwaitingItems()
 				ListView_EnsureVisible(m_listView, iItemIndex, FALSE);
 			}
 
-			m_directoryState.filesToSelect.erase(selectItr);
+			if (selectItr != m_directoryState.filesToSelect.end())
+			{
+				m_directoryState.filesToSelect.erase(selectItr);
+			}
+
+			if (parsingPathSelectItr != m_directoryState.parsingPathsToSelect.end())
+			{
+				m_directoryState.parsingPathsToSelect.erase(parsingPathSelectItr);
+			}
 		}
 
 		/* If the file is marked as hidden, ghost it out. */

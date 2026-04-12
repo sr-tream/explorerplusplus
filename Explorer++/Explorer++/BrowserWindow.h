@@ -76,6 +76,13 @@ public:
 	virtual void OpenItem(PCIDLIST_ABSOLUTE pidlItem,
 		OpenFolderDisposition openFolderDisposition) = 0;
 
+	// Selects an existing tab if it resolves to the specified folder target.
+	virtual bool SelectTabByPath(const std::wstring &itemPath);
+
+	// Shows the specified item within its parent folder, reusing an existing tab when possible.
+	virtual bool ShowItemInFolder(const std::wstring &itemPath,
+		OpenFolderDisposition openFolderDisposition = OpenFolderDisposition::ForegroundTab);
+
 	// Opens the specified item externally, regardless of whether it's a file or a folder.
 	virtual void OpenFileItem(const std::wstring &itemPath, const std::wstring &parameters) = 0;
 	virtual void OpenFileItem(PCIDLIST_ABSOLUTE pidlItem, const std::wstring &parameters) = 0;

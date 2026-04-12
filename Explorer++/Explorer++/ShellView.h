@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BrowserList.h"
+#include "../Helper/Pidl.h"
 #include "../Helper/WeakPtr.h"
 #include "../Helper/WinRTBaseWrapper.h"
 
@@ -15,7 +17,8 @@ class ShellBrowserImpl;
 class ShellView : public winrt::implements<ShellView, IShellView, winrt::non_agile>
 {
 public:
-	ShellView(WeakPtr<ShellBrowserImpl> shellBrowserWeak, bool switchToTabOnSelect);
+	ShellView(WeakPtr<ShellBrowserImpl> shellBrowserWeak, const BrowserList *browserList,
+		int browserId, PCIDLIST_ABSOLUTE directoryPidl, bool switchToTabOnSelect);
 
 	// IShellView
 	IFACEMETHODIMP TranslateAccelerator(MSG *msg);
@@ -37,7 +40,12 @@ public:
 	IFACEMETHODIMP ContextSensitiveHelp(BOOL enterMode);
 
 private:
+	HRESULT FallbackSelectItem(PCUITEMID_CHILD pidlItem) const;
+
 	const WeakPtr<ShellBrowserImpl> m_shellBrowserWeak;
+	const BrowserList *const m_browserList;
+	const int m_browserId;
+	const PidlAbsolute m_directoryPidl;
 	const bool m_switchToTabOnSelect;
 };
 

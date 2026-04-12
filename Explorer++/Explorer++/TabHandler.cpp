@@ -220,31 +220,9 @@ void Explorerplusplus::CreateCommandLineTabs()
 			continue;
 		}
 
-		unique_pidl_absolute fullPidl;
-		HRESULT hr = ParseDisplayNameForNavigation(absolutePath->c_str(), fullPidl);
-
-		if (FAILED(hr))
+		if (!ShowItemInFolder(*absolutePath))
 		{
 			continue;
-		}
-
-		unique_pidl_absolute parentPidl(ILCloneFull(fullPidl.get()));
-
-		BOOL res = ILRemoveLastID(parentPidl.get());
-
-		if (!res)
-		{
-			continue;
-		}
-
-		auto navigateParams = NavigateParams::Normal(parentPidl.get());
-		Tab &newTab =
-			GetActivePane()->GetTabContainer()->CreateNewTab(navigateParams, { .selected = true });
-
-		if (ArePidlsEquivalent(newTab.GetShellBrowserImpl()->GetDirectoryIdl().get(),
-				parentPidl.get()))
-		{
-			newTab.GetShellBrowserImpl()->SelectItems({ fullPidl.get() });
 		}
 	}
 
@@ -265,6 +243,11 @@ void Explorerplusplus::CreateCommandLineTabs()
 			currentDirectory.value(), EnvVarsExpansion::DontExpand);
 
 		if (!absolutePath)
+		{
+			continue;
+		}
+
+		if (SelectTabByPath(*absolutePath))
 		{
 			continue;
 		}
