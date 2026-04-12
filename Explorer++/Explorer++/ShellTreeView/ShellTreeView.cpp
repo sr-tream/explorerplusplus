@@ -1578,6 +1578,14 @@ void ShellTreeView::Paste()
 
 	if (CanShellPasteDataObject(selectedItemPidl.get(), clipboardObject.get(), PasteType::Normal))
 	{
+		auto directPasteResult = ::FileOperations::PasteDataObject(m_hTreeView,
+			selectedItemPidl.get(), clipboardObject.get());
+
+		if (directPasteResult.has_value())
+		{
+			return;
+		}
+
 		ExecuteActionFromContextMenu(selectedItemPidl.get(), {}, m_hTreeView, L"paste", 0, nullptr);
 	}
 	else

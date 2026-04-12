@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "DuplicateFilenameHelper.h"
+#include "FileOperations.h"
 #include <algorithm>
 #include <cwctype>
 #include <filesystem>
@@ -131,7 +132,8 @@ HRESULT PerformDuplicateReplace(HWND hwnd, const std::vector<std::wstring> &sour
 		RETURN_IF_FAILED(
 			CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fo)));
 		RETURN_IF_FAILED(fo->SetOwnerWindow(hwnd));
-		RETURN_IF_FAILED(fo->SetOperationFlags(FOF_ALLOWUNDO | FOF_NOCONFIRMATION));
+		RETURN_IF_FAILED(fo->SetOperationFlags(
+			::FileOperations::GetTransferOperationFlags() | FOF_NOCONFIRMATION));
 
 		for (const auto &match : matches)
 		{
@@ -174,7 +176,7 @@ HRESULT PerformDuplicateReplace(HWND hwnd, const std::vector<std::wstring> &sour
 		RETURN_IF_FAILED(
 			CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fo)));
 		RETURN_IF_FAILED(fo->SetOwnerWindow(hwnd));
-		RETURN_IF_FAILED(fo->SetOperationFlags(FOF_ALLOWUNDO));
+		RETURN_IF_FAILED(fo->SetOperationFlags(::FileOperations::GetTransferOperationFlags()));
 
 		for (const auto &sourcePath : unmatchedFiles)
 		{

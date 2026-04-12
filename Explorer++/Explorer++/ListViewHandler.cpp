@@ -21,6 +21,7 @@
 #include "ThemeWindowTracker.h"
 #include "ViewModeHelper.h"
 #include "DuplicateFilenameHelper.h"
+#include "FileOperations.h"
 #include "../Helper/ClipboardHelper.h"
 #include "../Helper/DataExchangeHelper.h"
 #include "../Helper/DragDropHelper.h"
@@ -482,6 +483,14 @@ void Explorerplusplus::OnListViewPaste()
 
 	if (CanShellPasteDataObject(directory.get(), clipboardObject.get(), PasteType::Normal))
 	{
+		auto directPasteResult =
+			::FileOperations::PasteDataObject(m_hContainer, directory.get(), clipboardObject.get());
+
+		if (directPasteResult.has_value())
+		{
+			return;
+		}
+
 		auto serviceProvider = winrt::make_self<ServiceProvider>();
 		serviceProvider->RegisterService(IID_IFolderView,
 			winrt::make<FolderView>(selectedTab.GetShellBrowserImpl()->GetWeakPtr()));

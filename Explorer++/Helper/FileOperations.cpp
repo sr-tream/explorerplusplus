@@ -17,6 +17,55 @@
 
 BOOL GetFileClusterSize(const std::wstring &strFilename, PLARGE_INTEGER lpRealFileSize);
 
+namespace
+{
+
+constexpr DWORD TRANSFER_OPERATION_FLAGS = FOF_ALLOWUNDO | FOFX_REQUIREELEVATION;
+
+HRESULT TransferItems(HWND hwnd, IShellItem *destinationFolder, IUnknown *items,
+	TransferAction action)
+{
+	wil::com_ptr_nothrow<IFileOperation> fo;
+	HRESULT hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fo));
+
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	hr = fo->SetOwnerWindow(hwnd);
+
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	hr = fo->SetOperationFlags(FileOperations::GetTransferOperationFlags());
+
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	if (action == TransferAction::Move)
+	{
+		hr = fo->MoveItems(items, destinationFolder);
+	}
+	else
+	{
+		hr = fo->CopyItems(items, destinationFolder);
+	}
+
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	return fo->PerformOperations();
+}
+
+}
+
 HRESULT FileOperations::RenameFile(IShellItem *item, const std::wstring &newName)
 {
 	wil::com_ptr_nothrow<IFileOperation> fo;
@@ -64,21 +113,7 @@ HRESULT FileOperations::DeleteFiles(HWND hwnd, const std::vector<PCIDLIST_ABSOLU
 		return hr;
 	}
 
-	DWORD flags = 0;
-
-	if (!permanent)
-	{
-		flags |= FOF_ALLOWUNDO;
-	}
-
-	if (silent)
-	{
-		flags |= FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI;
-	}
-	else
-	{
-		flags |= FOF_WANTNUKEWARNING;
-	}
+	DWORD flags = GetDeleteOperationFlags(permanent, silent);
 
 	if (flags != 0)
 	{
@@ -119,6 +154,27 @@ HRESULT FileOperations::DeleteFiles(HWND hwnd, const std::vector<PCIDLIST_ABSOLU
 	return hr;
 }
 
+DWORD FileOperations::GetDeleteOperationFlags(bool permanent, bool silent)
+{
+	DWORD flags = FOFX_REQUIREELEVATION;
+
+	if (!permanent)
+	{
+		flags |= FOF_ALLOWUNDO;
+	}
+
+	if (silent)
+	{
+		flags |= FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOFX_SHOWELEVATIONPROMPT;
+	}
+	else
+	{
+		flags |= FOF_WANTNUKEWARNING;
+	}
+
+	return flags;
+}
+
 HRESULT FileOperations::CopyFilesToFolder(HWND hOwner, const std::wstring &strTitle,
 	std::vector<PCIDLIST_ABSOLUTE> &pidls, TransferAction action)
 {
@@ -146,30 +202,8 @@ HRESULT FileOperations::CopyFilesToFolder(HWND hOwner, const std::wstring &strTi
 HRESULT FileOperations::CopyFiles(HWND hwnd, IShellItem *destinationFolder,
 	std::vector<PCIDLIST_ABSOLUTE> &pidls, TransferAction action)
 {
-	wil::com_ptr_nothrow<IFileOperation> fo;
-	HRESULT hr = CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fo));
-
-	if (FAILED(hr))
-	{
-		return hr;
-	}
-
-	hr = fo->SetOwnerWindow(hwnd);
-
-	if (FAILED(hr))
-	{
-		return hr;
-	}
-
-	hr = fo->SetOperationFlags(FOF_ALLOWUNDO);
-
-	if (FAILED(hr))
-	{
-		return hr;
-	}
-
 	wil::com_ptr_nothrow<IShellItemArray> shellItemArray;
-	hr = SHCreateShellItemArrayFromIDLists(static_cast<UINT>(pidls.size()), &pidls[0],
+	HRESULT hr = SHCreateShellItemArrayFromIDLists(static_cast<UINT>(pidls.size()), &pidls[0],
 		&shellItemArray);
 
 	if (FAILED(hr))
@@ -178,30 +212,71 @@ HRESULT FileOperations::CopyFiles(HWND hwnd, IShellItem *destinationFolder,
 	}
 
 	wil::com_ptr_nothrow<IUnknown> unknown;
-	hr = shellItemArray->QueryInterface(IID_IUnknown, reinterpret_cast<void **>(&unknown));
+	hr = shellItemArray->QueryInterface(IID_PPV_ARGS(&unknown));
 
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
-	if (action == TransferAction::Move)
+	return TransferItems(hwnd, destinationFolder, unknown.get(), action);
+}
+
+DWORD FileOperations::GetTransferOperationFlags()
+{
+	return TRANSFER_OPERATION_FLAGS;
+}
+
+TransferAction FileOperations::GetTransferActionForDataObject(IDataObject *dataObject)
+{
+	DWORD preferredEffect = DROPEFFECT_COPY | DROPEFFECT_LINK;
+
+	if (dataObject != nullptr)
 	{
-		hr = fo->MoveItems(unknown.get(), destinationFolder);
+		GetPreferredDropEffect(dataObject, preferredEffect);
 	}
-	else
+
+	return WI_IsFlagSet(preferredEffect, DROPEFFECT_MOVE) ? TransferAction::Move
+														  : TransferAction::Copy;
+}
+
+std::optional<HRESULT> FileOperations::PasteDataObject(HWND hwnd, PCIDLIST_ABSOLUTE destination,
+	IDataObject *dataObject)
+{
+	SFGAOF attributes = SFGAO_FILESYSTEM;
+	HRESULT hr = GetItemAttributes(destination, &attributes);
+
+	if (FAILED(hr) || WI_IsFlagClear(attributes, SFGAO_FILESYSTEM))
 	{
-		hr = fo->CopyItems(unknown.get(), destinationFolder);
+		return std::nullopt;
 	}
+
+	wil::com_ptr_nothrow<IShellItemArray> shellItemArray;
+	hr = SHCreateShellItemArrayFromDataObject(dataObject, IID_PPV_ARGS(&shellItemArray));
+
+	if (FAILED(hr))
+	{
+		return std::nullopt;
+	}
+
+	wil::com_ptr_nothrow<IShellItem> destinationFolder;
+	hr = SHCreateItemFromIDList(destination, IID_PPV_ARGS(&destinationFolder));
 
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
-	hr = fo->PerformOperations();
+	wil::com_ptr_nothrow<IUnknown> unknown;
+	hr = shellItemArray->QueryInterface(IID_PPV_ARGS(&unknown));
 
-	return hr;
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	return TransferItems(hwnd, destinationFolder.get(), unknown.get(),
+		GetTransferActionForDataObject(dataObject));
 }
 
 TCHAR *FileOperations::BuildFilenameList(const std::list<std::wstring> &FilenameList)

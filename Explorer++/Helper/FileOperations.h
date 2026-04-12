@@ -6,6 +6,7 @@
 
 #include "Pidl.h"
 #include <list>
+#include <optional>
 #include <vector>
 
 class ClipboardStore;
@@ -34,11 +35,16 @@ enum class OverwriteMethod
 HRESULT RenameFile(IShellItem *item, const std::wstring &newName);
 HRESULT DeleteFiles(HWND hwnd, const std::vector<PCIDLIST_ABSOLUTE> &pidls, bool permanent,
 	bool silent);
+DWORD GetDeleteOperationFlags(bool permanent, bool silent);
 void DeleteFileSecurely(const std::wstring &strFilename, OverwriteMethod overwriteMethod);
 HRESULT CopyFilesToFolder(HWND hOwner, const std::wstring &strTitle,
 	std::vector<PCIDLIST_ABSOLUTE> &pidls, TransferAction action);
 HRESULT CopyFiles(HWND hwnd, IShellItem *destinationFolder, std::vector<PCIDLIST_ABSOLUTE> &pidls,
 	TransferAction action);
+DWORD GetTransferOperationFlags();
+TransferAction GetTransferActionForDataObject(IDataObject *dataObject);
+std::optional<HRESULT> PasteDataObject(HWND hwnd, PCIDLIST_ABSOLUTE destination,
+	IDataObject *dataObject);
 
 HRESULT CreateNewFolder(IShellItem *destinationFolder, const std::wstring &newFolderName,
 	IFileOperationProgressSink *progressSink);

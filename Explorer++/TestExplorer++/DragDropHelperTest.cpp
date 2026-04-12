@@ -4,6 +4,7 @@
 
 #include "pch.h"
 #include "../Helper/DragDropHelper.h"
+#include "../Helper/FileOperations.h"
 #include "DragDropTestHelper.h"
 #include "../Helper/DataObjectImpl.h"
 #include "../Helper/WinRTBaseWrapper.h"
@@ -31,6 +32,46 @@ TEST_P(PreferredDropEffectTestSuite, PreferredDropEffect)
 
 INSTANTIATE_TEST_SUITE_P(CopyAndMoveEffects, PreferredDropEffectTestSuite,
 	Values(DROPEFFECT_COPY, DROPEFFECT_MOVE));
+
+TEST(FileOperationsTest, TransferOperationFlagsRequireElevation)
+{
+	EXPECT_EQ(::FileOperations::GetTransferOperationFlags(),
+		FOF_ALLOWUNDO | FOFX_REQUIREELEVATION);
+}
+
+TEST(FileOperationsTest, DeleteOperationFlagsRequireElevation)
+{
+	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(false, false),
+		FOF_ALLOWUNDO | FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION);
+	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(true, false),
+		FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION);
+}
+
+TEST(FileOperationsTest, SilentDeleteOperationFlagsStillAllowElevationPrompt)
+{
+	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(true, true),
+		FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOFX_REQUIREELEVATION
+			| FOFX_SHOWELEVATIONPROMPT);
+}
+
+TEST(FileOperationsTest, GetTransferActionDefaultsToCopy)
+{
+	wil::com_ptr_nothrow<IDataObject> dataObject;
+	CreateShellDataObject(L"C:\\fake", ShellItemType::File, dataObject);
+
+	EXPECT_EQ(::FileOperations::GetTransferActionForDataObject(dataObject.get()),
+		TransferAction::Copy);
+}
+
+TEST(FileOperationsTest, GetTransferActionUsesPreferredDropEffect)
+{
+	wil::com_ptr_nothrow<IDataObject> dataObject;
+	CreateShellDataObject(L"C:\\fake", ShellItemType::File, dataObject);
+	ASSERT_HRESULT_SUCCEEDED(SetPreferredDropEffect(dataObject.get(), DROPEFFECT_MOVE));
+
+	EXPECT_EQ(::FileOperations::GetTransferActionForDataObject(dataObject.get()),
+		TransferAction::Move);
+}
 
 TEST(DragDropHelperTest, GetSetTextOnDataObject)
 {
