@@ -45,16 +45,17 @@ int CALLBACK ShellBrowserImpl::Sort(int InternalIndex1, int InternalIndex2) cons
 						 == FILE_ATTRIBUTE_DIRECTORY)
 		? true
 		: false;
+	bool sortFoldersFirst = ShouldSortFoldersFirst(m_directoryState.virtualFolder,
+		CompareVirtualFolders(CSIDL_BITBUCKET),
+		m_config->globalFolderSettings.displayMixedFilesAndFolders);
 
-	/* Folders will by default be sorted separately from files,
-	except in the recycle bin. */
-	if (!m_config->globalFolderSettings.displayMixedFilesAndFolders && isFolder1 && !isFolder2
-		&& !CompareVirtualFolders(CSIDL_BITBUCKET))
+	// Real filesystem folders always keep directories ahead of files. Virtual folders still honor
+	// the mixed-order option, except for the recycle bin which preserves its existing behavior.
+	if (sortFoldersFirst && isFolder1 && !isFolder2)
 	{
 		comparisonResult = -1;
 	}
-	else if (!m_config->globalFolderSettings.displayMixedFilesAndFolders && !isFolder1 && isFolder2
-		&& !CompareVirtualFolders(CSIDL_BITBUCKET))
+	else if (sortFoldersFirst && !isFolder1 && isFolder2)
 	{
 		comparisonResult = 1;
 	}
@@ -371,7 +372,8 @@ int CALLBACK ShellBrowserImpl::Sort(int InternalIndex1, int InternalIndex2) cons
 		}
 	}
 
-	if (m_folderSettings.sortDirection == +SortDirection::Descending)
+	if (ShouldReverseSortComparison(m_folderSettings.sortDirection, sortFoldersFirst, isFolder1,
+		isFolder2))
 	{
 		comparisonResult = -comparisonResult;
 	}

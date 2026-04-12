@@ -211,6 +211,9 @@
     <ClCompile Include="ShellBrowser\ShellBrowserImpl.cpp">
       <Filter>ShellBrowser</Filter>
     </ClCompile>
+    <ClCompile Include="ShellBrowser\DesktopIniFolderSettingsStorage.cpp">
+      <Filter>ShellBrowser</Filter>
+    </ClCompile>
     <ClCompile Include="ShellBrowser\TileView.cpp">
       <Filter>ShellBrowser</Filter>
     </ClCompile>
@@ -1108,6 +1111,9 @@
       <Filter>ShellBrowser</Filter>
     </ClInclude>
     <ClInclude Include="ShellBrowser\ShellBrowserImpl.h">
+      <Filter>ShellBrowser</Filter>
+    </ClInclude>
+    <ClInclude Include="ShellBrowser\DesktopIniFolderSettingsStorage.h">
       <Filter>ShellBrowser</Filter>
     </ClInclude>
     <ClInclude Include="ValueWrapper.h">

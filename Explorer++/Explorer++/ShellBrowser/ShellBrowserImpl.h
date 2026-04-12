@@ -350,6 +350,7 @@ private:
 	/* Browsing support. */
 	void OnNavigationStarted(const NavigationRequest *request);
 	void ChangeFolders(const PidlAbsolute &directory);
+	bool LoadPersistedFolderSettings();
 	void PrepareToChangeFolders();
 	void ClearPendingResults();
 	void StoreCurrentlySelectedItems();
@@ -366,6 +367,8 @@ private:
 	void SetFirstColumnTextToCallback();
 	void SetFirstColumnTextToFilename();
 	void SetNavigationState(NavigationState navigationState);
+	void MaybeSavePersistedFolderSettings() const;
+	bool CanPersistFolderSettings() const;
 
 	// Shell window integration
 	void NotifyShellOfNavigation(PCIDLIST_ABSOLUTE pidl);

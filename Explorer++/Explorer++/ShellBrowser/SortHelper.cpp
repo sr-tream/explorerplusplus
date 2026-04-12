@@ -8,6 +8,33 @@
 #include <wil/common.h>
 #include <propvarutil.h>
 
+bool ShouldSortFoldersFirst(bool virtualFolder, bool recycleBinFolder,
+	bool displayMixedFilesAndFolders)
+{
+	if (recycleBinFolder)
+	{
+		return false;
+	}
+
+	if (!virtualFolder)
+	{
+		return true;
+	}
+
+	return !displayMixedFilesAndFolders;
+}
+
+bool ShouldReverseSortComparison(SortDirection sortDirection, bool sortFoldersFirst, bool isFolder1,
+	bool isFolder2)
+{
+	if (sortDirection != +SortDirection::Descending)
+	{
+		return false;
+	}
+
+	return !(sortFoldersFirst && isFolder1 != isFolder2);
+}
+
 int SortByName(const BasicItemInfo_t &itemInfo1, const BasicItemInfo_t &itemInfo2,
 	const GlobalFolderSettings &globalFolderSettings)
 {

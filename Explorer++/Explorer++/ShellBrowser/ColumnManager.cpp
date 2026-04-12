@@ -499,6 +499,7 @@ void ShellBrowserImpl::ColumnClicked(int iClickedColumn)
 				}
 
 				SortFolder();
+				MaybeSavePersistedFolderSettings();
 
 				break;
 			}
@@ -654,6 +655,7 @@ void ShellBrowserImpl::SetCurrentColumnSet(const std::vector<Column_t> &columns)
 	if (sortFolder)
 	{
 		SortFolder();
+		MaybeSavePersistedFolderSettings();
 	}
 }
 

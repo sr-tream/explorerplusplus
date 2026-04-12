@@ -57,8 +57,16 @@ void ShellBrowserImpl::ChangeFolders(const PidlAbsolute &directory)
 	m_directoryState.virtualFolder = isVirtualFolder;
 	m_uniqueFolderId++;
 
+	bool loadedPersistedFolderSettings = LoadPersistedFolderSettings();
 	SetActiveColumnSet();
+	FolderSettings folderSettingsBeforeVerify = m_folderSettings;
 	VerifySortMode();
+
+	if (loadedPersistedFolderSettings && m_folderSettings != folderSettingsBeforeVerify)
+	{
+		MaybeSavePersistedFolderSettings();
+	}
+
 	SetViewModeInternal(m_folderSettings.viewMode);
 
 	m_folderVisited = true;

@@ -10,6 +10,7 @@
 #include "ColorRuleModel.h"
 #include "ColumnDataRetrieval.h"
 #include "Config.h"
+#include "DesktopIniFolderSettingsStorage.h"
 #include "DialogHelper.h"
 #include "DirectoryOperationsHelper.h"
 #include "FileOperations.h"
@@ -297,6 +298,8 @@ void ShellBrowserImpl::SetViewMode(ViewMode viewMode)
 	case ViewMode::LargeThumbnails:
 		break;
 	}
+
+	MaybeSavePersistedFolderSettings();
 }
 
 /* Explicitly sets the view mode within in the listview.
@@ -510,6 +513,7 @@ void ShellBrowserImpl::SetSortMode(SortMode sortMode)
 	m_folderSettings.sortMode = sortMode;
 
 	SortFolder();
+	MaybeSavePersistedFolderSettings();
 }
 
 SortMode ShellBrowserImpl::GetGroupMode() const
@@ -525,6 +529,8 @@ void ShellBrowserImpl::SetGroupMode(SortMode sortMode)
 	{
 		MoveItemsIntoGroups();
 	}
+
+	MaybeSavePersistedFolderSettings();
 }
 
 SortDirection ShellBrowserImpl::GetSortDirection() const
@@ -542,6 +548,7 @@ void ShellBrowserImpl::SetSortDirection(SortDirection direction)
 	m_folderSettings.sortDirection = direction;
 
 	SortFolder();
+	MaybeSavePersistedFolderSettings();
 }
 
 SortDirection ShellBrowserImpl::GetGroupSortDirection() const
@@ -589,6 +596,41 @@ std::wstring ShellBrowserImpl::GetItemFullName(int index) const
 std::wstring ShellBrowserImpl::GetDirectoryPath() const
 {
 	return m_directoryState.directory;
+}
+
+bool ShellBrowserImpl::LoadPersistedFolderSettings()
+{
+	if (!CanPersistFolderSettings())
+	{
+		return false;
+	}
+
+	auto folderSettings = DesktopIniFolderSettingsStorage::LoadFolderSettings(
+		m_directoryState.directory, m_folderSettings);
+
+	if (!folderSettings)
+	{
+		return false;
+	}
+
+	m_folderSettings = *folderSettings;
+	return true;
+}
+
+void ShellBrowserImpl::MaybeSavePersistedFolderSettings() const
+{
+	if (!CanPersistFolderSettings())
+	{
+		return;
+	}
+
+	DesktopIniFolderSettingsStorage::SaveFolderSettings(m_directoryState.directory,
+		m_folderSettings);
+}
+
+bool ShellBrowserImpl::CanPersistFolderSettings() const
+{
+	return !m_directoryState.virtualFolder && !m_directoryState.directory.empty();
 }
 
 unique_pidl_absolute ShellBrowserImpl::GetDirectoryIdl() const

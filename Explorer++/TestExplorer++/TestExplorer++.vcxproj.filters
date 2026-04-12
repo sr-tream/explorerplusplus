@@ -430,6 +430,12 @@
     <ClCompile Include="ShellBrowserTest.cpp">
       <Filter>ShellBrowser</Filter>
     </ClCompile>
+    <ClCompile Include="DesktopIniFolderSettingsStorageTest.cpp">
+      <Filter>ShellBrowser</Filter>
+    </ClCompile>
+    <ClCompile Include="SortHelperTest.cpp">
+      <Filter>ShellBrowser</Filter>
+    </ClCompile>
     <ClCompile Include="ShellContextMenuIdGeneratorTest.cpp">
       <Filter>Helper\Shell\Shell Integration</Filter>
     </ClCompile>

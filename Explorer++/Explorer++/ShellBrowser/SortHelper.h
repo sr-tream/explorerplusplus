@@ -16,6 +16,10 @@ enum class DateType
 	Accessed
 };
 
+bool ShouldSortFoldersFirst(bool virtualFolder, bool recycleBinFolder,
+	bool displayMixedFilesAndFolders);
+bool ShouldReverseSortComparison(SortDirection sortDirection, bool sortFoldersFirst, bool isFolder1,
+	bool isFolder2);
 int SortByName(const BasicItemInfo_t &itemInfo1, const BasicItemInfo_t &itemInfo2,
 	const GlobalFolderSettings &globalFolderSettings);
 int SortBySize(const BasicItemInfo_t &itemInfo1, const BasicItemInfo_t &itemInfo2);
