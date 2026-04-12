@@ -28,13 +28,14 @@ void OnClearRegistrySettings();
 void OnUpdateReplaceExplorerSetting(DefaultFileManager::ReplaceExplorerMode updatedReplaceMode);
 ReplaceExplorerResults UpdateReplaceExplorerSetting(
 	DefaultFileManager::ReplaceExplorerMode updatedReplaceMode);
+std::optional<ExitCode> MaybeRouteShellTargets(CommandLine::Settings *commandLineSettings);
 
 }
 
 namespace StartupCommandLineProcessor
 {
 
-std::optional<ExitCode> Process(const CommandLine::Settings *commandLineSettings,
+std::optional<ExitCode> Process(CommandLine::Settings *commandLineSettings,
 	ClipboardStore *clipboardStore)
 {
 	if (commandLineSettings->crashedData)
@@ -73,6 +74,13 @@ std::optional<ExitCode> Process(const CommandLine::Settings *commandLineSettings
 	{
 		FLAGS_logtostdout = false;
 		FLAGS_minloglevel = google::GLOG_INFO;
+	}
+
+	auto routedExitCode = MaybeRouteShellTargets(commandLineSettings);
+
+	if (routedExitCode)
+	{
+		return routedExitCode;
 	}
 
 	return std::nullopt;
@@ -167,6 +175,44 @@ ReplaceExplorerResults UpdateReplaceExplorerSetting(
 	}
 
 	return results;
+}
+
+std::optional<ExitCode> MaybeRouteShellTargets(CommandLine::Settings *commandLineSettings)
+{
+	if (commandLineSettings->directories.empty())
+	{
+		return std::nullopt;
+	}
+
+	bool launchedSystemExplorer = false;
+	std::vector<std::wstring> remainingDirectories;
+
+	for (const auto &directory : commandLineSettings->directories)
+	{
+		if (DefaultFileManager::PickTargetRoute(directory)
+				== DefaultFileManager::TargetRoute::SystemExplorer
+			&& DefaultFileManager::LaunchTargetInSystemExplorer(directory))
+		{
+			launchedSystemExplorer = true;
+			continue;
+		}
+
+		remainingDirectories.push_back(directory);
+	}
+
+	if (!launchedSystemExplorer)
+	{
+		return std::nullopt;
+	}
+
+	commandLineSettings->directories = std::move(remainingDirectories);
+
+	if (commandLineSettings->directories.empty() && commandLineSettings->filesToSelect.empty())
+	{
+		return EXIT_CODE_NORMAL;
+	}
+
+	return std::nullopt;
 }
 
 }

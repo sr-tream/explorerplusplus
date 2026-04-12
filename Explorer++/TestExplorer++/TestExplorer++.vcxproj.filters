@@ -363,6 +363,9 @@
     <ClCompile Include="EventScopeTest.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="SetDefaultFileManagerTest.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="ScopedTestDir.cpp" />
     <ClCompile Include="FileSystemWatcherTest.cpp">
       <Filter>Directory Watching</Filter>

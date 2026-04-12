@@ -33,6 +33,7 @@ That means these changes may not be accepted upstream and may not be useful for 
 * Hotkey and terminal workflow changes: `Ctrl+Shift+V` pastes symbolic links, `F4` opens Windows Terminal (with a PowerShell fallback), `F6` edits the current path, `Alt+C` copies the selected item path and `F10` creates a new folder
 * Filesystem folders now store their own `view mode`, `sort mode`, `sort direction` and `group mode` in a hidden/system `desktop.ini` entry, while virtual folders keep the previous per-tab behavior and directories stay ahead of files even when sorting dates in descending order
 * Tabs now show a delayed loading indicator when folder navigation takes longer than the configured threshold (150ms by default), and that threshold can be adjusted in **Options -> Advanced** (`0` shows it immediately)
+* When **Replace Explorer for all folders** is enabled, Explorer++ now registers the Win+E/open-new-window shell hook and uses integrated router logic so filesystem targets still open in Explorer++ while Control Panel and other shell-namespace targets are handed back to `explorer.exe`
 
 These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
 

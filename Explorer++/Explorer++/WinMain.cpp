@@ -49,7 +49,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return std::get<CommandLine::ExitInfo>(commandLineInfo).exitCode;
 	}
 
-	const auto &commandLineSettings = std::get<CommandLine::Settings>(commandLineInfo);
+	auto commandLineSettings = std::get<CommandLine::Settings>(commandLineInfo);
 
 	auto clipboardStore = std::make_unique<SystemClipboardStore>();
 	auto exitCode =

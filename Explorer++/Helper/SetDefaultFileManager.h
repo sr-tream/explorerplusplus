@@ -5,6 +5,9 @@
 #pragma once
 
 #include "BetterEnumsWrapper.h"
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace DefaultFileManager
 {
@@ -17,12 +20,40 @@ BETTER_ENUM(ReplaceExplorerMode, int,
 )
 // clang-format on
 
+enum class RegistryOperationType
+{
+	SetValue,
+	DeleteValue,
+	DeleteTree
+};
+
+struct RegistryOperation
+{
+	RegistryOperationType type;
+	std::wstring keyPath;
+	std::wstring valueName;
+	std::wstring value;
+};
+
+enum class TargetRoute
+{
+	ExplorerPlusPlus,
+	SystemExplorer
+};
+
 LSTATUS SetAsDefaultFileManagerFileSystem(const std::wstring &applicationKeyName,
 	const std::wstring &menuText);
 LSTATUS SetAsDefaultFileManagerAll(const std::wstring &applicationKeyName,
 	const std::wstring &menuText);
 LSTATUS RemoveAsDefaultFileManagerFileSystem(const std::wstring &applicationKeyName);
 LSTATUS RemoveAsDefaultFileManagerAll(const std::wstring &applicationKeyName);
+std::vector<RegistryOperation> BuildRegistrationOperations(ReplaceExplorerMode replacementType,
+	const std::wstring &applicationPath);
+std::vector<RegistryOperation> BuildRemovalOperations(ReplaceExplorerMode replacementType);
+bool IsShellLikeTarget(std::wstring_view target);
+bool IsFilesystemLikeTarget(std::wstring_view target);
+TargetRoute PickTargetRoute(std::wstring_view target);
+BOOL LaunchTargetInSystemExplorer(const std::wstring &target);
 
 }
 

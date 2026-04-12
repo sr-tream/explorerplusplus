@@ -333,6 +333,7 @@
     <ClCompile Include="NavigationEventsTest.cpp" />
     <ClCompile Include="ResourceLoaderFake.cpp" />
     <ClCompile Include="ScopedBrowserCommandTargetTest.cpp" />
+    <ClCompile Include="SetDefaultFileManagerTest.cpp" />
     <ClCompile Include="ScopedTestDir.cpp" />
     <ClCompile Include="SearchTabsModelTest.cpp" />
     <ClCompile Include="ShellBrowserEventsTest.cpp" />
