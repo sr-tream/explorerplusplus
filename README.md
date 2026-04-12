@@ -14,7 +14,8 @@ That means these changes may not be accepted upstream and may not be useful for 
 
 ### Fork-only changes
 
-* Git status coloring in the list view for files and folders, with color rule filters for modified, staged, untracked, deleted, conflicted, added and ignored items
+* Git status coloring in the list view for files and folders, with color rule filters for modified, staged, untracked, deleted, conflicted, added and ignored items; when no saved color rules exist yet, fresh installs now default to git-status rules for modified, staged, untracked and ignored items
+* Fresh settings now default to a workflow-oriented window setup: gridlines off, check boxes on, full row selection on, treeview synchronization off, automatic tree expansion off, and treeview delay disabled
 * Search dialog support for file content search plus indexed search through Windows Search
 * Tree view navigation fix when clicking an already-selected folder after switching tabs
 * Git ignored folder handling fix so folders with non-ignored content are no longer shown as fully ignored

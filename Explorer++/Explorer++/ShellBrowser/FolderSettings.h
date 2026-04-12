@@ -45,7 +45,7 @@ struct GlobalFolderSettings
 	bool hideSystemFiles = false;
 	bool hideLinkExtension = false;
 	bool insertSorted = true;
-	ValueWrapper<bool> showGridlines = true;
+	ValueWrapper<bool> showGridlines = false;
 	bool forceSize = false;
 	SizeDisplayFormat sizeDisplayFormat = SizeDisplayFormat::Bytes;
 	ValueWrapper<bool> oneClickActivate = false;

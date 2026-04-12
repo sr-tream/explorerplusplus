@@ -4,6 +4,8 @@
 
 #include "pch.h"
 #include "ColorRule.h"
+#include "ColorRuleModel.h"
+#include "ColorRuleModelFactory.h"
 #include "GitStatusTracker.h"
 #include "ScopedTestDir.h"
 #include <gmock/gmock.h>
@@ -103,6 +105,34 @@ TEST_F(ColorRuleTest, UpdateWithoutChange)
 
 	EXPECT_CALL(m_observer, OnColorRuleUpdated(&m_colorRule)).Times(0);
 	m_colorRule.SetFilterGitStatus(m_colorRule.GetFilterGitStatus());
+}
+
+TEST(ColorRuleModelFactoryTest, DefaultRulesUseGitStatuses)
+{
+	auto model = ColorRuleModelFactory::Create();
+	const auto &items = model->GetItems();
+
+	ASSERT_EQ(items.size(), 4u);
+
+	EXPECT_EQ(items[0]->GetDescription(), L"Git modified");
+	EXPECT_EQ(items[0]->GetFilterAttributes(), 0u);
+	EXPECT_EQ(items[0]->GetFilterGitStatus(), GitStatus::Modified);
+	EXPECT_EQ(items[0]->GetColor(), RGB(255, 140, 0));
+
+	EXPECT_EQ(items[1]->GetDescription(), L"Git staged");
+	EXPECT_EQ(items[1]->GetFilterAttributes(), 0u);
+	EXPECT_EQ(items[1]->GetFilterGitStatus(), GitStatus::Staged);
+	EXPECT_EQ(items[1]->GetColor(), RGB(0, 128, 0));
+
+	EXPECT_EQ(items[2]->GetDescription(), L"Git untracked");
+	EXPECT_EQ(items[2]->GetFilterAttributes(), 0u);
+	EXPECT_EQ(items[2]->GetFilterGitStatus(), GitStatus::Untracked);
+	EXPECT_EQ(items[2]->GetColor(), RGB(220, 20, 60));
+
+	EXPECT_EQ(items[3]->GetDescription(), L"Git ignored");
+	EXPECT_EQ(items[3]->GetFilterAttributes(), 0u);
+	EXPECT_EQ(items[3]->GetFilterGitStatus(), GitStatus::Ignored);
+	EXPECT_EQ(items[3]->GetColor(), RGB(128, 128, 128));
 }
 
 class GitStatusTrackerIgnoredFolderTest : public Test

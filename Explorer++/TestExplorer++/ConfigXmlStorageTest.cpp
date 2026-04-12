@@ -14,6 +14,18 @@ class ConfigXmlStorageTest : public XmlStorageTest
 {
 };
 
+TEST(ConfigDefaultsTest, RequestedWindowDefaults)
+{
+	Config config;
+
+	EXPECT_FALSE(config.globalFolderSettings.showGridlines.get());
+	EXPECT_TRUE(config.checkBoxSelection.get());
+	EXPECT_TRUE(config.useFullRowSelect.get());
+	EXPECT_FALSE(config.synchronizeTreeview.get());
+	EXPECT_FALSE(config.treeViewAutoExpandSelected);
+	EXPECT_FALSE(config.treeViewDelayEnabled);
+}
+
 TEST_F(ConfigXmlStorageTest, SaveLoad)
 {
 	auto referenceConfig = ConfigStorageTestHelper::BuildReference();

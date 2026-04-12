@@ -6,20 +6,33 @@
 #include "ColorRuleModelFactory.h"
 #include "ColorRule.h"
 #include "ColorRuleModel.h"
-#include "MainResource.h"
-#include "ResourceHelper.h"
+#include "GitStatusTracker.h"
+
+namespace
+{
+
+constexpr COLORREF GIT_MODIFIED_COLOR = RGB(255, 140, 0);
+constexpr COLORREF GIT_STAGED_COLOR = RGB(0, 128, 0);
+constexpr COLORREF GIT_UNTRACKED_COLOR = RGB(220, 20, 60);
+constexpr COLORREF GIT_IGNORED_COLOR = RGB(128, 128, 128);
+
+}
 
 std::unique_ptr<ColorRuleModel> ColorRuleModelFactory::Create()
 {
 	auto colorRuleModel = std::make_unique<ColorRuleModel>();
 
 	colorRuleModel->AddItem(std::make_unique<ColorRule>(
-		ResourceHelper::LoadString(GetModuleHandle(nullptr), IDS_GENERAL_COLOR_RULE_COMPRESSED),
-		L"", false, FILE_ATTRIBUTE_COMPRESSED, RGB(0, 116, 232)));
+		L"Git modified", L"", false, 0, GIT_MODIFIED_COLOR, GitStatus::Modified));
 
 	colorRuleModel->AddItem(std::make_unique<ColorRule>(
-		ResourceHelper::LoadString(GetModuleHandle(nullptr), IDS_GENERAL_COLOR_RULE_ENCRYPTED), L"",
-		false, FILE_ATTRIBUTE_ENCRYPTED, RGB(0, 128, 0)));
+		L"Git staged", L"", false, 0, GIT_STAGED_COLOR, GitStatus::Staged));
+
+	colorRuleModel->AddItem(std::make_unique<ColorRule>(
+		L"Git untracked", L"", false, 0, GIT_UNTRACKED_COLOR, GitStatus::Untracked));
+
+	colorRuleModel->AddItem(std::make_unique<ColorRule>(
+		L"Git ignored", L"", false, 0, GIT_IGNORED_COLOR, GitStatus::Ignored));
 
 	return colorRuleModel;
 }

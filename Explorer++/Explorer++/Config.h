@@ -55,15 +55,15 @@ struct Config
 	bool treeViewDelayEnabled = false;
 	bool treeViewAutoExpandSelected = false;
 	bool showTaskbarThumbnails = false;
-	ValueWrapper<bool> useFullRowSelect = false;
+	ValueWrapper<bool> useFullRowSelect = true;
 	bool showFilePreviews = true;
 	bool allowMultipleInstances = true;
 	bool doubleClickTabClose = true;
 	ValueWrapper<bool> useLargeToolbarIcons = false;
 	bool overwriteExistingFilesConfirmation = true;
-	ValueWrapper<bool> checkBoxSelection = false;
+	ValueWrapper<bool> checkBoxSelection = true;
 	bool confirmCloseTabs = false;
-	ValueWrapper<bool> synchronizeTreeview = true;
+	ValueWrapper<bool> synchronizeTreeview = false;
 	bool displayWindowVertical = false;
 	bool goUpOnDoubleClick = true;
 
