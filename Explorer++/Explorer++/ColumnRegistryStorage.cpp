@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "ColumnRegistryStorage.h"
+#include "DefaultColumns.h"
 #include "ShellBrowser/FolderSettings.h"
 #include "../Helper/RegistrySettings.h"
 
@@ -95,7 +96,7 @@ void LoadColumnSet(HKEY parentKey, const std::wstring &columnsKeyName,
 		Column_t column;
 		column.type = *columnType;
 		column.checked = savedColumn.checked;
-		column.width = DEFAULT_COLUMN_WIDTH;
+		column.width = GetDefaultColumnWidth(column.type);
 
 		auto itr = std::find_if(savedColumnWidths.begin(), savedColumnWidths.end(),
 			[&savedColumn](const SavedColumnWidth &savedColumnWidth)

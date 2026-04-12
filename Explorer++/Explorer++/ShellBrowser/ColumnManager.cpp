@@ -9,6 +9,7 @@
 #include "ColumnHelper.h"
 #include "Columns.h"
 #include "Config.h"
+#include "DefaultColumns.h"
 #include "ItemData.h"
 #include "MainResource.h"
 #include "ResourceHelper.h"
@@ -188,11 +189,15 @@ void ShellBrowserImpl::SetUpListViewColumns()
 void ShellBrowserImpl::InsertColumn(ColumnType columnType, int columnIndex, int width)
 {
 	std::wstring columnName = GetColumnName(m_app->GetResourceLoader(), columnType);
+	RECT clientRect{};
+	GetClientRect(m_listView, &clientRect);
+	int resolvedWidth =
+		ResolveColumnWidthForContainer(columnType, width, clientRect.right - clientRect.left);
 
 	LV_COLUMN lvColumn;
 	lvColumn.mask = LVCF_TEXT | LVCF_WIDTH;
 	lvColumn.pszText = columnName.data();
-	lvColumn.cx = width;
+	lvColumn.cx = resolvedWidth;
 
 	if (columnType == +ColumnType::Size || columnType == +ColumnType::RealSize
 		|| columnType == +ColumnType::TotalSize || columnType == +ColumnType::FreeSpace)

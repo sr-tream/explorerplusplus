@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "ColumnXmlStorage.h"
+#include "DefaultColumns.h"
 #include "ShellBrowser/FolderSettings.h"
 #include "../Helper/Helper.h"
 #include "../Helper/XMLSettings.h"
@@ -148,7 +149,7 @@ void LoadColumnSetFromXml(IXMLDOMNode *parentNode, const std::wstring &columnSet
 		Column_t column;
 		column.type = itr->second;
 		column.checked = checked;
-		column.width = DEFAULT_COLUMN_WIDTH;
+		column.width = GetDefaultColumnWidth(column.type);
 
 		int width;
 		hr = XMLSettings::GetIntFromMap(attributeMap.get(), itr->first + WIDTH_SUFFIX, width);

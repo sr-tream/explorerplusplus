@@ -14,7 +14,7 @@ TEST(ValidateSingleColumnSetTest, DefaultColumnsOnly)
 	// clang-format off
 	std::vector<Column_t> columns = {
 		{ ColumnType::NetworkAdaptorStatus, TRUE, DEFAULT_COLUMN_WIDTH },
-		{ ColumnType::Name, TRUE, DEFAULT_COLUMN_WIDTH },
+		{ ColumnType::Name, TRUE, DEFAULT_NAME_COLUMN_WIDTH },
 		{ ColumnType::Owner, TRUE, DEFAULT_COLUMN_WIDTH },
 		{ ColumnType::Type, TRUE, DEFAULT_COLUMN_WIDTH }
 	};
@@ -25,7 +25,7 @@ TEST(ValidateSingleColumnSetTest, DefaultColumnsOnly)
 	// clang-format off
 	std::vector<Column_t> expectedColumns = {
 		{ ColumnType::NetworkAdaptorStatus, TRUE, DEFAULT_COLUMN_WIDTH },
-		{ ColumnType::Name, TRUE, DEFAULT_COLUMN_WIDTH },
+		{ ColumnType::Name, TRUE, DEFAULT_NAME_COLUMN_WIDTH },
 		{ ColumnType::Owner, TRUE, DEFAULT_COLUMN_WIDTH },
 		{ ColumnType::Type, TRUE, DEFAULT_COLUMN_WIDTH }
 	};
@@ -51,7 +51,7 @@ TEST(ValidateSingleColumnSetTest, MissingColumns)
 	std::vector<Column_t> expectedColumns = {
 		{ ColumnType::Type, TRUE, DEFAULT_COLUMN_WIDTH },
 		{ ColumnType::Owner, TRUE, DEFAULT_COLUMN_WIDTH },
-		{ ColumnType::Name, TRUE, DEFAULT_COLUMN_WIDTH },
+		{ ColumnType::Name, TRUE, DEFAULT_NAME_COLUMN_WIDTH },
 		{ ColumnType::NetworkAdaptorStatus, TRUE, DEFAULT_COLUMN_WIDTH }
 	};
 	// clang-format on
@@ -86,4 +86,15 @@ TEST(ValidateSingleColumnSetTest, UnknownColumns)
 	// clang-format on
 
 	EXPECT_EQ(columns, expectedColumns);
+}
+
+TEST(DefaultColumnsTest, NameColumnUsesTwoThirdsOfContainerWidth)
+{
+	EXPECT_EQ(CalculateDefaultNameColumnWidth(900), 600);
+	EXPECT_EQ(ResolveColumnWidthForContainer(ColumnType::Name, DEFAULT_NAME_COLUMN_WIDTH, 900), 600);
+	EXPECT_EQ(ResolveColumnWidthForContainer(ColumnType::Name, DEFAULT_NAME_COLUMN_WIDTH, 0),
+		DEFAULT_COLUMN_WIDTH);
+	EXPECT_EQ(ResolveColumnWidthForContainer(ColumnType::Name, 321, 900), 321);
+	EXPECT_EQ(ResolveColumnWidthForContainer(ColumnType::Type, DEFAULT_COLUMN_WIDTH, 900),
+		DEFAULT_COLUMN_WIDTH);
 }
