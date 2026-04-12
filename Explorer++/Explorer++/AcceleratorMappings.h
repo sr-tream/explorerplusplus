@@ -48,6 +48,7 @@ const std::unordered_map<std::wstring, int> ACCELERATOR_MAPPINGS = {
 	{L"undo", IDM_EDIT_UNDO},
 	{L"paste_shortcut", IDM_EDIT_PASTESHORTCUT},
 	{L"paste_hard_link", IDM_EDIT_PASTEHARDLINK},
+	{L"paste_symbolic_link", IDM_EDIT_PASTE_SYMBOLIC_LINK},
 	{L"copy_to_folder", IDM_EDIT_COPYTOFOLDER},
 	{L"move_to_folder", IDM_EDIT_MOVETOFOLDER},
 	{L"resolve_link", IDM_EDIT_RESOLVELINK},

@@ -43,6 +43,24 @@ constexpr bool AreSelectTabItemIdsContiguous()
 // present.
 static_assert(AreSelectTabItemIdsContiguous());
 
+std::wstring EscapePowerShellSingleQuotedString(const std::wstring &value)
+{
+	std::wstring escaped;
+	escaped.reserve(value.size());
+
+	for (auto ch : value)
+	{
+		escaped.push_back(ch);
+
+		if (ch == L'\'')
+		{
+			escaped.push_back(ch);
+		}
+	}
+
+	return escaped;
+}
+
 }
 
 BrowserCommandController::BrowserCommandController(BrowserWindow *browser, Config *config,
@@ -507,35 +525,59 @@ void BrowserCommandController::OnCloseTab()
 
 void BrowserCommandController::StartCommandPrompt(LaunchProcessFlags flags)
 {
-	wil::unique_cotaskmem_string systemPath;
-	HRESULT hr = SHGetKnownFolderPath(FOLDERID_System, KF_FLAG_DEFAULT, nullptr, &systemPath);
-
-	if (FAILED(hr))
-	{
-		return;
-	}
-
-	std::filesystem::path fullPath(systemPath.get());
-	fullPath /= L"cmd.exe";
-
 	const auto *shellBrowser = GetActiveShellBrowser();
 
 	wil::unique_cotaskmem_string directoryPath;
-	hr = SHGetNameFromIDList(shellBrowser->GetDirectory().Raw(), SIGDN_FILESYSPATH, &directoryPath);
+	HRESULT hr =
+		SHGetNameFromIDList(shellBrowser->GetDirectory().Raw(), SIGDN_FILESYSPATH, &directoryPath);
 
 	if (FAILED(hr))
 	{
 		return;
 	}
 
-	std::wstring parameters;
-
-	if (WI_IsFlagSet(flags, LaunchProcessFlags::Elevated))
+	std::wstring directory = directoryPath.get();
+	auto tryLaunch = [this, flags, &directory](const std::wstring &path,
+						 const std::wstring &parameters = std::wstring()) -> bool
 	{
-		parameters = L"/K cd /d "s + directoryPath.get();
+		return LaunchProcess(m_browser->GetHWND(), path, parameters, directory, flags);
+	};
+
+	std::wstring terminalParameters = L"-d \"" + directory + L"\"";
+
+	if (tryLaunch(L"wt.exe", terminalParameters))
+	{
+		return;
 	}
 
-	LaunchProcess(nullptr, fullPath.c_str(), parameters, directoryPath.get(), flags);
+	wil::unique_cotaskmem_string localAppDataPath;
+	hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, &localAppDataPath);
+
+	if (SUCCEEDED(hr))
+	{
+		std::wstring windowsAppsTerminal =
+			std::wstring(localAppDataPath.get()) + L"\\Microsoft\\WindowsApps\\wt.exe";
+
+		if (tryLaunch(windowsAppsTerminal, terminalParameters))
+		{
+			return;
+		}
+	}
+
+	wil::unique_cotaskmem_string systemPath;
+	hr = SHGetKnownFolderPath(FOLDERID_System, KF_FLAG_DEFAULT, nullptr, &systemPath);
+
+	if (FAILED(hr))
+	{
+		return;
+	}
+
+	std::wstring powerShellPath =
+		std::wstring(systemPath.get()) + L"\\WindowsPowerShell\\v1.0\\powershell.exe";
+	std::wstring powerShellParameters =
+		L"-NoExit -Command \"Set-Location -LiteralPath '"
+		+ EscapePowerShellSingleQuotedString(directory) + L"'\"";
+	tryLaunch(powerShellPath, powerShellParameters);
 }
 
 void BrowserCommandController::CopyFolderPath() const

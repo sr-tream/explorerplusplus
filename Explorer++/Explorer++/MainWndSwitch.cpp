@@ -923,6 +923,7 @@ LRESULT Explorerplusplus::HandleMenuOrToolbarButtonOrAccelerator(HWND hwnd, UINT
 
 	case IDA_ADDRESSBAR:
 		SetFocus(m_addressBar->GetView()->GetHWND());
+		m_addressBar->GetView()->SelectAllText();
 		break;
 
 	case IDA_COMBODROPDOWN:

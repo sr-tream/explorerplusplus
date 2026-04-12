@@ -543,10 +543,9 @@ void Explorerplusplus::OnToolbarViews()
 	selectedTab.GetShellBrowserImpl()->CycleViewMode(true);
 }
 
-// This is used for both Tab/Shift+Tab and F6/Shift+F6. While IsDialogMessage() could be used to
-// handle Tab/Shift+Tab, the key combinations in this case are synonyms for each other. Since
-// F6/Shift+F6 would need to be handled manually anyway, handling both with the same function
-// ensures that they have identical behavior.
+// This is used for both Tab/Shift+Tab and any accelerators that are bound to next/previous window
+// focus changes. While IsDialogMessage() could be used for Tab/Shift+Tab, routing everything
+// through the same function ensures all equivalent shortcuts behave identically.
 void Explorerplusplus::OnFocusNextWindow(FocusChangeDirection direction)
 {
 	HWND focus = GetFocus();
