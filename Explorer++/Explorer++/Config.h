@@ -80,6 +80,9 @@ struct Config
 	// Content search maximum file size in KiB (0 = no limit)
 	UINT contentSearchMaxFileSizeKB = 1024;
 
+	// Delay in milliseconds before a loading indicator is shown on a tab (0 = immediate)
+	UINT tabLoadingIndicatorDelay = 150;
+
 	// Whether to use Windows Search indexed search by default
 	bool useIndexedSearchByDefault = false;
 

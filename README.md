@@ -28,6 +28,7 @@ That means these changes may not be accepted upstream and may not be useful for 
 * Duplicate filename replacement on paste: when pasting files with `(N)` suffixes (e.g. `foo (1).txt`) into a folder that already contains the base file (`foo.txt`), a confirmation dialog offers to replace the existing file instead of keeping both
 * Hotkey and terminal workflow changes: `Ctrl+Shift+V` pastes symbolic links, `F4` opens Windows Terminal (with a PowerShell fallback), `F6` edits the current path, `Alt+C` copies the selected item path and `F10` creates a new folder
 * Filesystem folders now store their own `view mode`, `sort mode`, `sort direction` and `group mode` in a hidden/system `desktop.ini` entry, while virtual folders keep the previous per-tab behavior and directories stay ahead of files even when sorting dates in descending order
+* Tabs now show a delayed loading indicator when folder navigation takes longer than the configured threshold (150ms by default), and that threshold can be adjusted in **Options -> Advanced** (`0` shows it immediately)
 
 These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
 

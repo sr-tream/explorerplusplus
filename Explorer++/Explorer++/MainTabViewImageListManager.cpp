@@ -25,6 +25,11 @@ MainTabViewImageListManager::MainTabViewImageListManager(const ResourceLoader *r
 	m_lockIconIndex = ImageList_Add(m_imageList.get(), bitmap.get(), nullptr);
 	CHECK_NE(m_lockIconIndex, -1);
 
+	bitmap = resourceLoader->LoadBitmapFromPNGForDpi(Icon::Refresh, ICON_SIZE_96DPI,
+		ICON_SIZE_96DPI, dpi);
+	m_loadingIconIndex = ImageList_Add(m_imageList.get(), bitmap.get(), nullptr);
+	CHECK_NE(m_loadingIconIndex, -1);
+
 	m_defaultFolderIconIndex = ImageHelper::CopyImageListIcon(m_imageList.get(),
 		reinterpret_cast<HIMAGELIST>(m_systemImageList.get()),
 		m_defaultFolderIconSystemImageListIndex);
@@ -48,12 +53,18 @@ int MainTabViewImageListManager::AddIconFromSystemImageList(int systemIconIndex)
 
 bool MainTabViewImageListManager::IsDefaultIcon(int iconIndex) const
 {
-	return iconIndex == m_lockIconIndex || iconIndex == m_defaultFolderIconIndex;
+	return iconIndex == m_lockIconIndex || iconIndex == m_loadingIconIndex
+		|| iconIndex == m_defaultFolderIconIndex;
 }
 
 int MainTabViewImageListManager::GetLockIconIndex() const
 {
 	return m_lockIconIndex;
+}
+
+int MainTabViewImageListManager::GetLoadingIconIndex() const
+{
+	return m_loadingIconIndex;
 }
 
 int MainTabViewImageListManager::GetDefaultFolderIconIndex() const

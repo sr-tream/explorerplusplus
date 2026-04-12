@@ -13,7 +13,8 @@ class ResourceLoader;
 // The main tab view displays two types of icons:
 //
 // - The lock icon (when a tab is locked)
-// - The system icon for the associated folder (when a tab isn't locked)
+// - The loading icon (when a tab is navigating for longer than the configured delay)
+// - The system icon for the associated folder (when a tab isn't locked and isn't loading)
 //
 // Since at least one custom icon is used, it's not feasible to assign the system image list itself
 // to the view. Instead, a custom image list has to be used that contains the lock icon by default
@@ -29,6 +30,7 @@ public:
 	int AddIconFromSystemImageList(int systemIconIndex);
 	bool IsDefaultIcon(int iconIndex) const;
 	int GetLockIconIndex() const;
+	int GetLoadingIconIndex() const;
 	int GetDefaultFolderIconIndex() const;
 
 private:
@@ -40,4 +42,5 @@ private:
 	wil::unique_himagelist m_imageList;
 	int m_defaultFolderIconIndex;
 	int m_lockIconIndex;
+	int m_loadingIconIndex;
 };

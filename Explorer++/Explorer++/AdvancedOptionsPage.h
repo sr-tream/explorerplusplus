@@ -22,12 +22,14 @@ private:
 		CheckSystemIsPinnedToNameSpaceTree,
 		OpenTabsInForeground,
 		GoUpOnDoubleClick,
-		QuickAccessInTreeView
+		QuickAccessInTreeView,
+		TabLoadingIndicatorDelay
 	};
 
 	enum class AdvancedOptionType
 	{
-		Boolean
+		Boolean,
+		UnsignedInteger
 	};
 
 	struct AdvancedOption
@@ -44,6 +46,8 @@ private:
 	void InsertAdvancedOptionsIntoListView();
 	bool GetBooleanConfigValue(AdvancedOptionId id);
 	void SetBooleanConfigValue(AdvancedOptionId id, bool value);
+	UINT GetUnsignedIntegerConfigValue(AdvancedOptionId id);
+	void SetUnsignedIntegerConfigValue(AdvancedOptionId id, UINT value);
 
 	INT_PTR OnNotify(WPARAM wParam, LPARAM lParam) override;
 	AdvancedOption *GetAdvancedOptionByIndex(int index);

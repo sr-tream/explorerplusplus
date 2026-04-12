@@ -24,6 +24,7 @@ Config BuildReference()
 	config.globalFolderSettings.oneClickActivateHoverTime = 40;
 	config.defaultFolderSettings.viewMode = ViewMode::Details;
 	config.defaultFolderSettings.showInGroups = true;
+	config.tabLoadingIndicatorDelay = 375;
 	return config;
 }
 

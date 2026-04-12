@@ -8,6 +8,7 @@
 #include "BrowserWindow.h"
 #include "Config.h"
 #include "MainTabView.h"
+#include "OneShotTimer.h"
 #include "PopupMenuView.h"
 #include "PreservedTab.h"
 #include "ShellBrowser/NavigateParams.h"
@@ -20,6 +21,7 @@
 #include "TabContainerBackgroundContextMenu.h"
 #include "TabContextMenu.h"
 #include "TabEvents.h"
+#include "TabLoadingIndicatorState.h"
 #include "TabStorage.h"
 #include "../Helper/CachedIcons.h"
 #include "../Helper/Controls.h"
@@ -40,9 +42,12 @@ class MainTabViewItem : public TabViewItem
 {
 public:
 	MainTabViewItem(Tab *tab, TabEvents *tabEvents, ShellBrowserEvents *shellBrowserEvents,
-		NavigationEvents *navigationEvents, IconFetcher *iconFetcher, CachedIcons *cachedIcons,
-		MainTabViewImageListManager *imageListManager) :
+		NavigationEvents *navigationEvents, OneShotTimerManager *timerManager, IconFetcher *iconFetcher,
+		CachedIcons *cachedIcons, MainTabViewImageListManager *imageListManager,
+		const Config *config) :
 		m_tab(tab),
+		m_config(config),
+		m_loadingIndicatorTimer(timerManager),
 		m_iconFetcher(iconFetcher),
 		m_cachedIcons(cachedIcons),
 		m_imageListManager(imageListManager)
@@ -55,8 +60,20 @@ public:
 			std::bind(&MainTabViewItem::OnDisplayPropertiesUpdated, this),
 			ShellBrowserEventScope::ForShellBrowser(*tab->GetShellBrowser())));
 
+		m_connections.push_back(navigationEvents->AddStartedObserver(
+			[this](const NavigationRequest *request) { OnNavigationStarted(request); },
+			NavigationEventScope::ForShellBrowser(*tab->GetShellBrowser())));
 		m_connections.push_back(navigationEvents->AddCommittedObserver(
 			std::bind(&MainTabViewItem::OnDisplayPropertiesUpdated, this),
+			NavigationEventScope::ForShellBrowser(*tab->GetShellBrowser())));
+		m_connections.push_back(navigationEvents->AddCommittedObserver(
+			[this](const NavigationRequest *request) { OnNavigationFinished(request); },
+			NavigationEventScope::ForShellBrowser(*tab->GetShellBrowser())));
+		m_connections.push_back(navigationEvents->AddFailedObserver(
+			[this](const NavigationRequest *request) { OnNavigationFinished(request); },
+			NavigationEventScope::ForShellBrowser(*tab->GetShellBrowser())));
+		m_connections.push_back(navigationEvents->AddCancelledObserver(
+			[this](const NavigationRequest *request) { OnNavigationFinished(request); },
 			NavigationEventScope::ForShellBrowser(*tab->GetShellBrowser())));
 	}
 
@@ -75,6 +92,11 @@ public:
 
 	std::optional<int> GetIconIndex() const override
 	{
+		if (m_loadingIndicatorState.IsVisible())
+		{
+			return m_imageListManager->GetLoadingIconIndex();
+		}
+
 		if (m_tab->GetLockState() == Tab::LockState::Locked
 			|| m_tab->GetLockState() == Tab::LockState::AddressLocked)
 		{
@@ -109,6 +131,54 @@ private:
 	{
 		m_weakPtrFactory.InvalidateWeakPtrs();
 		m_iconIndex.reset();
+
+		NotifyParentOfUpdate();
+	}
+
+	void OnNavigationStarted(const NavigationRequest *request)
+	{
+		UNREFERENCED_PARAMETER(request);
+
+		m_loadingIndicatorTimer.Stop();
+		bool stateChanged = m_loadingIndicatorState.Start(
+			std::chrono::milliseconds(m_config->tabLoadingIndicatorDelay));
+
+		if (stateChanged)
+		{
+			NotifyParentOfUpdate();
+		}
+
+		auto delay = std::chrono::milliseconds(m_config->tabLoadingIndicatorDelay);
+
+		if (m_loadingIndicatorState.IsVisible())
+		{
+			return;
+		}
+
+		m_loadingIndicatorTimer.Start(delay,
+			[this]() { OnLoadingIndicatorThresholdReached(); });
+	}
+
+	void OnLoadingIndicatorThresholdReached()
+	{
+		if (!m_loadingIndicatorState.ShowAfterDelay())
+		{
+			return;
+		}
+
+		NotifyParentOfUpdate();
+	}
+
+	void OnNavigationFinished(const NavigationRequest *request)
+	{
+		UNREFERENCED_PARAMETER(request);
+
+		m_loadingIndicatorTimer.Stop();
+
+		if (!m_loadingIndicatorState.Finish())
+		{
+			return;
+		}
 
 		NotifyParentOfUpdate();
 	}
@@ -168,9 +238,12 @@ private:
 	}
 
 	Tab *const m_tab;
+	const Config *const m_config;
+	OneShotTimer m_loadingIndicatorTimer;
 	IconFetcher *const m_iconFetcher;
 	CachedIcons *const m_cachedIcons;
 	MainTabViewImageListManager *const m_imageListManager;
+	TabLoadingIndicatorState m_loadingIndicatorState;
 	mutable std::optional<int> m_iconIndex;
 	std::vector<boost::signals2::scoped_connection> m_connections;
 
@@ -447,7 +520,8 @@ Tab &TabContainer::SetUpNewTab(Tab &tab, NavigateParams &navigateParams,
 	}
 
 	auto tabItem = std::make_unique<MainTabViewItem>(&tab, m_tabEvents, m_shellBrowserEvents,
-		m_navigationEvents, &m_iconFetcher, m_cachedIcons, m_view->GetImageListManager());
+		m_navigationEvents, &m_timerManager, &m_iconFetcher, m_cachedIcons,
+		m_view->GetImageListManager(), m_config);
 	tabItem->SetDoubleClickedCallback(
 		std::bind_front(&TabContainer::OnTabDoubleClicked, this, &tab));
 	tabItem->SetMiddleClickedCallback(

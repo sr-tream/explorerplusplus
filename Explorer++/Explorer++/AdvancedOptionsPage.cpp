@@ -12,8 +12,25 @@
 #include "../Helper/RichEditHelper.h"
 #include <glog/logging.h>
 
+namespace
+{
+
 const boost::bimap<bool, std::wstring> BOOL_MAPPINGS =
 	MakeBimap<bool, std::wstring>({ { true, L"true" }, { false, L"false" } });
+
+std::optional<UINT> TryParseUnsignedInteger(const wchar_t *text)
+{
+	int value;
+
+	if (StrToIntEx(text, STIF_DEFAULT, &value) == FALSE || value < 0)
+	{
+		return std::nullopt;
+	}
+
+	return static_cast<UINT>(value);
+}
+
+}
 
 AdvancedOptionsPage::AdvancedOptionsPage(HWND parent, const ResourceLoader *resourceLoader,
 	Config *config, SettingChangedCallback settingChangedCallback, HWND tooltipWindow) :
@@ -106,6 +123,14 @@ std::vector<AdvancedOptionsPage::AdvancedOption> AdvancedOptionsPage::Initialize
 	option.description = {};
 	advancedOptions.push_back(option);
 
+	option.id = AdvancedOptionId::TabLoadingIndicatorDelay;
+	option.name = L"Tab loading indicator delay (ms)";
+	option.type = AdvancedOptionType::UnsignedInteger;
+	option.description =
+		L"Delay in milliseconds before a loading indicator is shown on a tab while a folder is "
+		L"loading. Set to 0 to show it immediately.";
+	advancedOptions.push_back(option);
+
 	return advancedOptions;
 }
 
@@ -130,8 +155,14 @@ void AdvancedOptionsPage::InsertAdvancedOptionsIntoListView()
 			switch (option.type)
 			{
 			case AdvancedOptionType::Boolean:
+			{
 				bool booleanValue = GetBooleanConfigValue(option.id);
 				value = BOOL_MAPPINGS.left.at(booleanValue);
+				break;
+			}
+
+			case AdvancedOptionType::UnsignedInteger:
+				value = std::to_wstring(GetUnsignedIntegerConfigValue(option.id));
 				break;
 			}
 
@@ -165,6 +196,21 @@ bool AdvancedOptionsPage::GetBooleanConfigValue(AdvancedOptionId id)
 	return false;
 }
 
+UINT AdvancedOptionsPage::GetUnsignedIntegerConfigValue(AdvancedOptionId id)
+{
+	switch (id)
+	{
+	case AdvancedOptionId::TabLoadingIndicatorDelay:
+		return m_config->tabLoadingIndicatorDelay;
+
+	default:
+		DCHECK(false);
+		break;
+	}
+
+	return 0;
+}
+
 void AdvancedOptionsPage::SetBooleanConfigValue(AdvancedOptionId id, bool value)
 {
 	switch (id)
@@ -183,6 +229,20 @@ void AdvancedOptionsPage::SetBooleanConfigValue(AdvancedOptionId id, bool value)
 
 	case AdvancedOptionId::QuickAccessInTreeView:
 		m_config->showQuickAccessInTreeView = value;
+		break;
+
+	default:
+		DCHECK(false);
+		break;
+	}
+}
+
+void AdvancedOptionsPage::SetUnsignedIntegerConfigValue(AdvancedOptionId id, UINT value)
+{
+	switch (id)
+	{
+	case AdvancedOptionId::TabLoadingIndicatorDelay:
+		m_config->tabLoadingIndicatorDelay = value;
 		break;
 
 	default:
@@ -261,6 +321,10 @@ INT_PTR AdvancedOptionsPage::OnNotify(WPARAM wParam, LPARAM lParam)
 			}
 		}
 		break;
+
+		case AdvancedOptionType::UnsignedInteger:
+			validValue = TryParseUnsignedInteger(info->item.pszText).has_value();
+			break;
 		}
 
 		if (!validValue)
@@ -326,6 +390,14 @@ void AdvancedOptionsPage::SaveSettings()
 			// Values are validated when editing, so the current value should always be valid.
 			bool newValue = BOOL_MAPPINGS.right.at(text);
 			SetBooleanConfigValue(option.id, newValue);
+		}
+		break;
+
+		case AdvancedOptionType::UnsignedInteger:
+		{
+			auto newValue = TryParseUnsignedInteger(text);
+			CHECK(newValue);
+			SetUnsignedIntegerConfigValue(option.id, *newValue);
 		}
 		break;
 		}

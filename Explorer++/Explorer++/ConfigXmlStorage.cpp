@@ -245,6 +245,7 @@ void LoadFromNode(IXMLDOMNode *settingsNode, Config &config)
 		config.globalFolderSettings.useNaturalSortOrder);
 	GetIntSetting(settingsNode, L"contentSearchMaxFileSizeKB",
 		config.contentSearchMaxFileSizeKB);
+	GetIntSetting(settingsNode, L"TabLoadingIndicatorDelay", config.tabLoadingIndicatorDelay);
 	GetBoolSetting(settingsNode, L"UseIndexedSearchByDefault",
 		config.useIndexedSearchByDefault);
 	GetBoolSetting(settingsNode, L"OpenTabsInForeground", config.openTabsInForeground);
@@ -476,6 +477,8 @@ void SaveToNode(IXMLDOMDocument *xmlDocument, IXMLDOMElement *settingsNode, cons
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"contentSearchMaxFileSizeKB",
 		XMLSettings::EncodeIntValue(config.contentSearchMaxFileSizeKB));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"TabLoadingIndicatorDelay", XMLSettings::EncodeIntValue(config.tabLoadingIndicatorDelay));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"UseIndexedSearchByDefault",
 		XMLSettings::EncodeBoolValue(config.useIndexedSearchByDefault));

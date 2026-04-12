@@ -10,9 +10,11 @@
 #include "PidlTestHelper.h"
 #include "ShellBrowser/ShellBrowser.h"
 #include "ShellBrowser/ShellNavigationController.h"
+#include "TabLoadingIndicatorState.h"
 #include <gtest/gtest.h>
 
 using namespace testing;
+using namespace std::chrono_literals;
 
 class TabContainerTest : public BrowserTestBase
 {
@@ -105,6 +107,49 @@ TEST_F(TabContainerTest, TabTooltip)
 	auto navigateParams = NavigateParams::Normal(pidl.Raw());
 	tab->GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
 	EXPECT_THAT(tabViewItem->GetTooltipText(), StrCaseEq(updatedPath));
+}
+
+TEST(TabLoadingIndicatorStateTest, DelayedIndicatorShowsAfterThreshold)
+{
+	TabLoadingIndicatorState state;
+
+	EXPECT_FALSE(state.Start(150ms));
+	EXPECT_FALSE(state.IsVisible());
+	EXPECT_TRUE(state.ShowAfterDelay());
+	EXPECT_TRUE(state.IsVisible());
+	EXPECT_FALSE(state.ShowAfterDelay());
+	EXPECT_TRUE(state.Finish());
+	EXPECT_FALSE(state.IsVisible());
+}
+
+TEST(TabLoadingIndicatorStateTest, ImmediateIndicatorShowsWithoutTimer)
+{
+	TabLoadingIndicatorState state;
+
+	EXPECT_TRUE(state.Start(0ms));
+	EXPECT_TRUE(state.IsVisible());
+	EXPECT_TRUE(state.Finish());
+	EXPECT_FALSE(state.IsVisible());
+}
+
+TEST(TabLoadingIndicatorStateTest, FinishedNavigationIgnoresThreshold)
+{
+	TabLoadingIndicatorState state;
+
+	EXPECT_FALSE(state.Start(150ms));
+	EXPECT_FALSE(state.Finish());
+	EXPECT_FALSE(state.ShowAfterDelay());
+	EXPECT_FALSE(state.IsVisible());
+}
+
+TEST(TabLoadingIndicatorStateTest, RestartingNavigationHidesPreviousIndicator)
+{
+	TabLoadingIndicatorState state;
+
+	EXPECT_TRUE(state.Start(0ms));
+	EXPECT_TRUE(state.IsVisible());
+	EXPECT_TRUE(state.Start(150ms));
+	EXPECT_FALSE(state.IsVisible());
 }
 
 TEST_F(TabContainerTest, GetTab)

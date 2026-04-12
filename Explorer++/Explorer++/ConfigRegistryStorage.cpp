@@ -145,6 +145,8 @@ void LoadFromKey(HKEY settingsKey, Config &config)
 		config.globalFolderSettings.useNaturalSortOrder);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"contentSearchMaxFileSizeKB",
 		config.contentSearchMaxFileSizeKB);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"TabLoadingIndicatorDelay",
+		config.tabLoadingIndicatorDelay);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"UseIndexedSearchByDefault",
 		config.useIndexedSearchByDefault);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"GoUpOnDoubleClick",
@@ -308,6 +310,8 @@ void SaveToKey(HKEY settingsKey, const Config &config)
 		config.globalFolderSettings.useNaturalSortOrder);
 	RegistrySettings::SaveDword(settingsKey, L"contentSearchMaxFileSizeKB",
 		config.contentSearchMaxFileSizeKB);
+	RegistrySettings::SaveDword(settingsKey, L"TabLoadingIndicatorDelay",
+		config.tabLoadingIndicatorDelay);
 	RegistrySettings::SaveDword(settingsKey, L"UseIndexedSearchByDefault",
 		config.useIndexedSearchByDefault);
 	RegistrySettings::SaveDword(settingsKey, L"GoUpOnDoubleClick", config.goUpOnDoubleClick);
