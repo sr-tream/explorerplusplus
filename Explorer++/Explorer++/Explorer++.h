@@ -234,6 +234,7 @@ private:
 	/* ListView private message handlers. */
 	LRESULT OnListViewKeyDown(LPARAM lParam);
 	void OnListViewPaste();
+	bool TryHandleDuplicatePaste(IDataObject *dataObject);
 
 	/* Tabs. */
 	void InitializeTabs();

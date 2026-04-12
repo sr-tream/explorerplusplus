@@ -25,6 +25,7 @@ That means these changes may not be accepted upstream and may not be useful for 
 * Skip git status for UNC/network paths (including WSL via `\\wsl$\`) to avoid multi-second hangs when browsing Linux filesystems
 * Background shell metadata retrieval: per-item shell calls (display name, attributes, find data) are now computed on the background COM STA thread instead of the UI thread, keeping Explorer++ responsive while navigating slow network or WSL folders
 * Drag-and-drop fix for symbolic links and `.lnk` shortcuts: non-shell apps (e.g. Telegram) now receive the resolved target file path via `CF_HDROP` while shell targets (Explorer copy/move/link) continue to use the original item PIDLs
+* Duplicate filename replacement on paste: when pasting files with `(N)` suffixes (e.g. `foo (1).txt`) into a folder that already contains the base file (`foo.txt`), a confirmation dialog offers to replace the existing file instead of keeping both
 
 These items are based on the latest commits in this fork by `SR_team` (some co-authored with Copilot).
 

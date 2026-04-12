@@ -1267,6 +1267,7 @@
     <ClCompile Include="DefaultColumnRegistryStorage.cpp" />
     <ClCompile Include="DefaultColumnXmlStorage.cpp" />
     <ClCompile Include="DirectoryOperationsHelper.cpp" />
+    <ClCompile Include="DuplicateFilenameHelper.cpp" />
     <ClCompile Include="DriveWatcher.cpp" />
     <ClCompile Include="EventScope.cpp" />
     <ClCompile Include="EventWindow.cpp" />
@@ -1635,6 +1636,7 @@
     <ClInclude Include="DefaultColumnRegistryStorage.h" />
     <ClInclude Include="DefaultColumnXmlStorage.h" />
     <ClInclude Include="DirectoryOperationsHelper.h" />
+    <ClInclude Include="DuplicateFilenameHelper.h" />
     <ClInclude Include="DisplayWindowDefaults.h" />
     <ClInclude Include="EventScope.h" />
     <ClInclude Include="EventWindow.h" />
