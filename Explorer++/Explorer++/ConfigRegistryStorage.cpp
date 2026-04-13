@@ -114,6 +114,12 @@ void LoadFromKey(HKEY settingsKey, Config &config)
 		config.checkPinnedToNamespaceTreeProperty);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowQuickAccessInTreeView",
 		config.showQuickAccessInTreeView);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowQuickContextMenus",
+		config.showQuickContextMenus);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowQuickContextMenuCustomActions",
+		config.showQuickContextMenuCustomActions);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowQuickContextMenuOpenItemIcon",
+		config.showQuickContextMenuOpenItemIcon);
 
 	auto theme = config.theme.get();
 	res = RegistrySettings::ReadBetterEnumValue(settingsKey, L"Theme", theme);
@@ -299,6 +305,12 @@ void SaveToKey(HKEY settingsKey, const Config &config)
 		config.checkPinnedToNamespaceTreeProperty);
 	RegistrySettings::SaveDword(settingsKey, L"ShowQuickAccessInTreeView",
 		config.showQuickAccessInTreeView.get());
+	RegistrySettings::SaveDword(settingsKey, L"ShowQuickContextMenus",
+		config.showQuickContextMenus);
+	RegistrySettings::SaveDword(settingsKey, L"ShowQuickContextMenuCustomActions",
+		config.showQuickContextMenuCustomActions);
+	RegistrySettings::SaveDword(settingsKey, L"ShowQuickContextMenuOpenItemIcon",
+		config.showQuickContextMenuOpenItemIcon);
 	RegistrySettings::SaveDword(settingsKey, L"Theme", config.theme.get());
 	RegistrySettings::SaveString(settingsKey, L"NewTabDirectory", config.defaultTabDirectory);
 	RegistrySettings::SaveDword(settingsKey, L"IconTheme", config.iconSet);

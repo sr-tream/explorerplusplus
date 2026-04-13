@@ -23,6 +23,7 @@ public:
 	void LoadBookmarks(BookmarkTree *bookmarkTree) override;
 	void LoadColorRules(ColorRuleModel *model) override;
 	void LoadApplications(Applications::ApplicationModel *model) override;
+	void LoadContextMenuActions(ContextMenuActions::ContextMenuActionModel *model) override;
 	void LoadDialogStates() override;
 	void LoadDefaultColumns(FolderColumns &defaultColumns) override;
 	void LoadFrequentLocations(FrequentLocationsModel *frequentLocationsModel) override;
@@ -32,6 +33,7 @@ public:
 	void SaveBookmarks(const BookmarkTree *bookmarkTree) override;
 	void SaveColorRules(const ColorRuleModel *model) override;
 	void SaveApplications(const Applications::ApplicationModel *model) override;
+	void SaveContextMenuActions(const ContextMenuActions::ContextMenuActionModel *model) override;
 	void SaveDialogStates() override;
 	void SaveDefaultColumns(const FolderColumns &defaultColumns) override;
 	void SaveFrequentLocations(const FrequentLocationsModel *frequentLocationsModel) override;

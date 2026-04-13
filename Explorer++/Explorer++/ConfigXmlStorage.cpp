@@ -225,6 +225,11 @@ void LoadFromNode(IXMLDOMNode *settingsNode, Config &config)
 	GetBoolSetting(settingsNode, L"CheckPinnedToNamespaceTreeProperty",
 		config.checkPinnedToNamespaceTreeProperty);
 	GetBoolSetting(settingsNode, L"ShowQuickAccessInTreeView", config.showQuickAccessInTreeView);
+	GetBoolSetting(settingsNode, L"ShowQuickContextMenus", config.showQuickContextMenus);
+	GetBoolSetting(settingsNode, L"ShowQuickContextMenuCustomActions",
+		config.showQuickContextMenuCustomActions);
+	GetBoolSetting(settingsNode, L"ShowQuickContextMenuOpenItemIcon",
+		config.showQuickContextMenuOpenItemIcon);
 
 	auto theme = config.theme.get();
 
@@ -466,6 +471,14 @@ void SaveToNode(IXMLDOMDocument *xmlDocument, IXMLDOMElement *settingsNode, cons
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"ShowQuickAccessInTreeView",
 		XMLSettings::EncodeBoolValue(config.showQuickAccessInTreeView.get()));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"ShowQuickContextMenus", XMLSettings::EncodeBoolValue(config.showQuickContextMenus));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"ShowQuickContextMenuCustomActions",
+		XMLSettings::EncodeBoolValue(config.showQuickContextMenuCustomActions));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"ShowQuickContextMenuOpenItemIcon",
+		XMLSettings::EncodeBoolValue(config.showQuickContextMenuOpenItemIcon));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME, L"Theme",
 		XMLSettings::EncodeIntValue(config.theme.get()));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,

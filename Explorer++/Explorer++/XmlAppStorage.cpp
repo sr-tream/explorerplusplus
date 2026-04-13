@@ -8,6 +8,7 @@
 #include "Bookmarks/BookmarkXmlStorage.h"
 #include "ColorRuleXmlStorage.h"
 #include "ConfigXmlStorage.h"
+#include "ContextMenuActionStorage.h"
 #include "DefaultColumnXmlStorage.h"
 #include "DialogStorageHelper.h"
 #include "FrequentLocationsXmlStorage.h"
@@ -52,6 +53,11 @@ void XmlAppStorage::LoadApplications(Applications::ApplicationModel *model)
 	Applications::ApplicationToolbarXmlStorage::Load(m_rootNode.get(), model);
 }
 
+void XmlAppStorage::LoadContextMenuActions(ContextMenuActions::ContextMenuActionModel *model)
+{
+	ContextMenuActions::Storage::LoadFromXml(m_rootNode.get(), model);
+}
+
 void XmlAppStorage::LoadDialogStates()
 {
 	DialogStorageHelper::LoadDialogStatesFromXML(m_xmlDocument.get());
@@ -90,6 +96,12 @@ void XmlAppStorage::SaveColorRules(const ColorRuleModel *model)
 void XmlAppStorage::SaveApplications(const Applications::ApplicationModel *model)
 {
 	Applications::ApplicationToolbarXmlStorage::Save(m_xmlDocument.get(), m_rootNode.get(), model);
+}
+
+void XmlAppStorage::SaveContextMenuActions(
+	const ContextMenuActions::ContextMenuActionModel *model)
+{
+	ContextMenuActions::Storage::SaveToXml(m_xmlDocument.get(), m_rootNode.get(), model);
 }
 
 void XmlAppStorage::SaveDialogStates()

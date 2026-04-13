@@ -35,23 +35,57 @@ void ShellContextMenu::AddDelegate(ShellContextMenuDelegate *delegate)
 
 void ShellContextMenu::ShowMenu(HWND hwnd, const POINT *pt, IUnknown *site, UINT flags)
 {
-	wil::unique_hmenu menu(CreatePopupMenu());
+	ShowPreparedMenu(hwnd, pt, site, BuildShellMenu(hwnd, site, flags));
+}
 
-	m_contextMenu = MaybeGetShellContextMenu(hwnd);
+ShellContextMenu::PreparedMenu ShellContextMenu::BuildShellMenu(HWND hwnd, IUnknown *site,
+	UINT flags) const
+{
+	PreparedMenu preparedMenu;
+	preparedMenu.menu.reset(CreatePopupMenu());
+
+	if (!preparedMenu.menu)
+	{
+		return preparedMenu;
+	}
+
+	preparedMenu.contextMenu = MaybeGetShellContextMenu(hwnd);
+	wil::unique_set_site_null_call resetSite;
+
+	if (preparedMenu.contextMenu)
+	{
+		resetSite = wil::com_set_site(preparedMenu.contextMenu.get(), site);
+		preparedMenu.contextMenu->QueryContextMenu(preparedMenu.menu.get(), 0, MIN_SHELL_MENU_ID,
+			MAX_SHELL_MENU_ID, flags);
+	}
+
+	return preparedMenu;
+}
+
+void ShellContextMenu::ShowPreparedMenu(HWND hwnd, const POINT *pt, IUnknown *site,
+	PreparedMenu preparedMenu)
+{
+	if (!preparedMenu.menu)
+	{
+		return;
+	}
+
+	m_contextMenu = std::move(preparedMenu.contextMenu);
+	auto resetContextMenu = wil::scope_exit([this] { m_contextMenu.reset(); });
+
 	wil::unique_set_site_null_call resetSite;
 
 	if (m_contextMenu)
 	{
 		resetSite = wil::com_set_site(m_contextMenu.get(), site);
-		m_contextMenu->QueryContextMenu(menu.get(), 0, MIN_SHELL_MENU_ID, MAX_SHELL_MENU_ID, flags);
 	}
 
-	UpdateMenuEntries(menu.get());
+	UpdateMenuEntries(preparedMenu.menu.get());
 
-	MenuHelper::RemoveTrailingSeparators(menu.get());
-	MenuHelper::RemoveDuplicateSeperators(menu.get());
+	MenuHelper::RemoveTrailingSeparators(preparedMenu.menu.get());
+	MenuHelper::RemoveDuplicateSeperators(preparedMenu.menu.get());
 
-	if (GetMenuItemCount(menu.get()) == 0)
+	if (GetMenuItemCount(preparedMenu.menu.get()) == 0)
 	{
 		// If the folder doesn't provide any IContextMenu instance, the application can still add
 		// items. If, however, the application doesn't add any items either, there's no menu to show
@@ -64,10 +98,10 @@ void ShellContextMenu::ShowMenu(HWND hwnd, const POINT *pt, IUnknown *site, UINT
 		std::bind_front(&ShellContextMenu::ParentWindowSubclass, this));
 
 	auto helpTextConnection = m_menuHelpTextHost->AddMenuHelpTextRequestObserver(
-		std::bind_front(&ShellContextMenu::MaybeGetMenuHelpText, this, menu.get()));
+		std::bind_front(&ShellContextMenu::MaybeGetMenuHelpText, this, preparedMenu.menu.get()));
 
-	UINT cmd =
-		TrackPopupMenu(menu.get(), TPM_LEFTALIGN | TPM_RETURNCMD, pt->x, pt->y, 0, hwnd, nullptr);
+	UINT cmd = TrackPopupMenu(preparedMenu.menu.get(), TPM_LEFTALIGN | TPM_RETURNCMD, pt->x, pt->y,
+		0, hwnd, nullptr);
 
 	helpTextConnection.disconnect();
 

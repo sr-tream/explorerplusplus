@@ -13,6 +13,13 @@ class ApplicationModel;
 
 }
 
+namespace ContextMenuActions
+{
+
+class ContextMenuActionModel;
+
+}
+
 class BookmarkTree;
 class ColorRuleModel;
 struct Config;
@@ -30,6 +37,7 @@ public:
 	virtual void LoadBookmarks(BookmarkTree *bookmarkTree) = 0;
 	virtual void LoadColorRules(ColorRuleModel *model) = 0;
 	virtual void LoadApplications(Applications::ApplicationModel *model) = 0;
+	virtual void LoadContextMenuActions(ContextMenuActions::ContextMenuActionModel *model) = 0;
 	virtual void LoadDialogStates() = 0;
 	virtual void LoadDefaultColumns(FolderColumns &defaultColumns) = 0;
 	virtual void LoadFrequentLocations(FrequentLocationsModel *frequentLocationsModel) = 0;
@@ -39,6 +47,8 @@ public:
 	virtual void SaveBookmarks(const BookmarkTree *bookmarkTree) = 0;
 	virtual void SaveColorRules(const ColorRuleModel *model) = 0;
 	virtual void SaveApplications(const Applications::ApplicationModel *model) = 0;
+	virtual void SaveContextMenuActions(
+		const ContextMenuActions::ContextMenuActionModel *model) = 0;
 	virtual void SaveDialogStates() = 0;
 	virtual void SaveDefaultColumns(const FolderColumns &defaultColumns) = 0;
 	virtual void SaveFrequentLocations(const FrequentLocationsModel *frequentLocationsModel) = 0;

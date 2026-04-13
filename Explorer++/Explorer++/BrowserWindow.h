@@ -75,6 +75,7 @@ public:
 	void OpenItem(PCIDLIST_ABSOLUTE pidlItem);
 	virtual void OpenItem(PCIDLIST_ABSOLUTE pidlItem,
 		OpenFolderDisposition openFolderDisposition) = 0;
+	bool CanOpenItemInNewTab(PCIDLIST_ABSOLUTE pidlItem) const;
 
 	// Selects an existing tab if it resolves to the specified folder target.
 	virtual bool SelectTabByPath(const std::wstring &itemPath);
@@ -104,6 +105,7 @@ public:
 
 protected:
 	void SetLifecycleState(LifecycleState state);
+	virtual bool ShouldOpenContainerFiles() const = 0;
 
 private:
 	static inline int idCounter = 1;

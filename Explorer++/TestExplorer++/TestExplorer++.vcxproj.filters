@@ -87,6 +87,18 @@
     <ClCompile Include="ColorRuleTest.cpp">
       <Filter>Color Rules</Filter>
     </ClCompile>
+    <ClCompile Include="ContextMenuActionRegistryStorageTest.cpp">
+      <Filter>Context Menu Support</Filter>
+    </ClCompile>
+    <ClCompile Include="ContextMenuActionStorageTestHelper.cpp">
+      <Filter>Context Menu Support</Filter>
+    </ClCompile>
+    <ClCompile Include="ContextMenuActionTest.cpp">
+      <Filter>Context Menu Support</Filter>
+    </ClCompile>
+    <ClCompile Include="ContextMenuActionXmlStorageTest.cpp">
+      <Filter>Context Menu Support</Filter>
+    </ClCompile>
     <ClCompile Include="MovableModelTest.cpp">
       <Filter>Helper\Miscellaneous</Filter>
     </ClCompile>
@@ -791,6 +803,9 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="ColorRulesStorageTestHelper.h">
       <Filter>Color Rules</Filter>
+    </ClInclude>
+    <ClInclude Include="ContextMenuActionStorageTestHelper.h">
+      <Filter>Context Menu Support</Filter>
     </ClInclude>
     <ClInclude Include="MovableModelHelper.h">
       <Filter>Storage</Filter>

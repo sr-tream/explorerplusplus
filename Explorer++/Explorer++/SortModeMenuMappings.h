@@ -9,3 +9,7 @@
 bool IsSortModeMenuItemId(UINT menuItemId);
 SortMode GetSortModeForMenuItemId(UINT menuItemId);
 UINT GetMenuItemIdForSortMode(SortMode sortMode);
+
+bool IsGroupModeMenuItemId(UINT menuItemId);
+SortMode GetSortModeForGroupMenuItemId(UINT menuItemId);
+UINT GetGroupMenuItemIdForSortMode(SortMode sortMode);

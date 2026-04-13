@@ -66,6 +66,9 @@ struct Config
 	ValueWrapper<bool> synchronizeTreeview = false;
 	bool displayWindowVertical = false;
 	bool goUpOnDoubleClick = true;
+	bool showQuickContextMenus = true;
+	bool showQuickContextMenuCustomActions = true;
+	bool showQuickContextMenuOpenItemIcon = false;
 
 	// Indicates whether container files (e.g. .7z, .cab, .rar, .zip) will be opened in Explorer++,
 	// or externally.

@@ -27,7 +27,16 @@ public:
 	static constexpr int MIN_SHELL_MENU_ID = 1;
 	static constexpr int MAX_SHELL_MENU_ID = 1000;
 
+	struct PreparedMenu
+	{
+		wil::unique_hmenu menu;
+		wil::com_ptr_nothrow<IContextMenu> contextMenu;
+	};
+
 	virtual ~ShellContextMenu();
+
+	PreparedMenu BuildShellMenu(HWND hwnd, IUnknown *site, UINT flags) const;
+	void ShowPreparedMenu(HWND hwnd, const POINT *pt, IUnknown *site, PreparedMenu preparedMenu);
 
 protected:
 	ShellContextMenu(PCIDLIST_ABSOLUTE directory, const std::vector<PCITEMID_CHILD> &items,

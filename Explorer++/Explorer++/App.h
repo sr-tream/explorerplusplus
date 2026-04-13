@@ -10,6 +10,7 @@
 #include "BrowserList.h"
 #include "CommandLine.h"
 #include "Config.h"
+#include "ContextMenuActionModel.h"
 #include "DarkModeColorProvider.h"
 #include "DarkModeManager.h"
 #include "DirectoryWatcherFactoryImpl.h"
@@ -72,6 +73,7 @@ public:
 	BookmarkTree *GetBookmarkTree();
 	ColorRuleModel *GetColorRuleModel() const;
 	Applications::ApplicationModel *GetApplicationModel();
+	ContextMenuActions::ContextMenuActionModel *GetContextMenuActionModel();
 	HINSTANCE GetResourceInstance() const;
 	ResourceLoader *GetResourceLoader() const;
 	TabEvents *GetTabEvents();
@@ -133,6 +135,7 @@ private:
 	BookmarkTree m_bookmarkTree;
 	std::unique_ptr<ColorRuleModel> m_colorRuleModel;
 	Applications::ApplicationModel m_applicationModel;
+	ContextMenuActions::ContextMenuActionModel m_contextMenuActionModel;
 	HINSTANCE m_resourceInstance;
 	std::unique_ptr<ResourceLoader> m_resourceLoader;
 	ProcessManager m_processManager;

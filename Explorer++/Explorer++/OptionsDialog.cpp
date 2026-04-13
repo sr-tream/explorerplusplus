@@ -7,6 +7,7 @@
 #include "AdvancedOptionsPage.h"
 #include "App.h"
 #include "AppearanceOptionsPage.h"
+#include "ContextMenuOptionsPage.h"
 #include "CoreInterface.h"
 #include "DarkModeManager.h"
 #include "DefaultSettingsOptionsPage.h"
@@ -141,6 +142,8 @@ void OptionsDialog::AddPages()
 		std::bind(&OptionsDialog::OnSettingChanged, this), m_tipWnd));
 	AddPage(std::make_unique<FilesFoldersOptionsPage>(m_hDlg, m_resourceLoader, m_config,
 		std::bind(&OptionsDialog::OnSettingChanged, this), m_tipWnd, m_coreInterface));
+	AddPage(std::make_unique<ContextMenuOptionsPage>(m_hDlg, m_resourceLoader, m_config,
+		std::bind(&OptionsDialog::OnSettingChanged, this), m_tipWnd, m_app));
 	AddPage(std::make_unique<WindowOptionsPage>(m_hDlg, m_resourceLoader, m_config,
 		std::bind(&OptionsDialog::OnSettingChanged, this), m_tipWnd));
 	AddPage(std::make_unique<TabsOptionsPage>(m_hDlg, m_resourceLoader, m_config,

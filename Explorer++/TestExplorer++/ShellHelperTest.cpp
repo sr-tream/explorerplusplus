@@ -236,6 +236,19 @@ TEST_P(CreateSimplePidlTest, Relative)
 INSTANTIATE_TEST_SUITE_P(FileAndFolder, CreateSimplePidlTest,
 	Values(ShellItemType::File, ShellItemType::Folder));
 
+TEST(CanOpenItemAsFolder, BasicItems)
+{
+	PidlAbsolute folderPidl = CreateSimplePidlForTest(L"c:\\path\\to\\folder", nullptr,
+		ShellItemType::Folder);
+	PidlAbsolute filePidl = CreateSimplePidlForTest(L"c:\\path\\to\\file.txt", nullptr,
+		ShellItemType::File);
+
+	EXPECT_TRUE(CanOpenItemAsFolder(folderPidl.Raw(), false));
+	EXPECT_TRUE(CanOpenItemAsFolder(folderPidl.Raw(), true));
+	EXPECT_FALSE(CanOpenItemAsFolder(filePidl.Raw(), false));
+	EXPECT_FALSE(CanOpenItemAsFolder(filePidl.Raw(), true));
+}
+
 TEST(IsPathGUID, GUIDPath)
 {
 	bool res = IsPathGUID(L"::{26EE0668-A00A-44D7-9371-BEB064C98683}");

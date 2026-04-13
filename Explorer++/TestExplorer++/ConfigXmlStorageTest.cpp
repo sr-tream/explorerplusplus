@@ -21,6 +21,9 @@ TEST(ConfigDefaultsTest, RequestedWindowDefaults)
 	EXPECT_FALSE(config.globalFolderSettings.showGridlines.get());
 	EXPECT_TRUE(config.checkBoxSelection.get());
 	EXPECT_TRUE(config.useFullRowSelect.get());
+	EXPECT_TRUE(config.showQuickContextMenus);
+	EXPECT_TRUE(config.showQuickContextMenuCustomActions);
+	EXPECT_FALSE(config.showQuickContextMenuOpenItemIcon);
 	EXPECT_FALSE(config.synchronizeTreeview.get());
 	EXPECT_FALSE(config.treeViewAutoExpandSelected);
 	EXPECT_FALSE(config.treeViewDelayEnabled);

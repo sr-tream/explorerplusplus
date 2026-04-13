@@ -49,10 +49,12 @@ class CachedIcons;
 struct Config;
 class FileActionHandler;
 class IconFetcher;
+class LegacyContextMenuPreloader;
 class NavigationRequest;
 struct PreservedShellBrowser;
 class Runtime;
 class ShellEnumeratorImpl;
+class ShellIconLoader;
 class ShellNavigationController;
 class WindowSubclass;
 
@@ -398,6 +400,11 @@ private:
 	void OnShowListViewContextMenu(const POINT &ptScreen);
 	void ShowBackgroundContextMenu(const POINT &pt);
 	void ShowItemContextMenu(const POINT &pt);
+	void ShowLegacyBackgroundContextMenu(const POINT &pt);
+	void ShowLegacyItemContextMenu(const POINT &pt,
+		const std::vector<PidlAbsolute> &selectedItems);
+	void ShowQuickBackgroundContextMenu(const POINT &pt);
+	void ShowQuickItemContextMenu(const POINT &pt, const std::vector<PidlAbsolute> &selectedItems);
 	bool OnSetCursor(HWND target);
 	void OnListViewGetDisplayInfo(LPARAM lParam);
 	LRESULT OnListViewGetInfoTip(NMLVGETINFOTIP *getInfoTip);
@@ -642,6 +649,8 @@ private:
 	int m_columnResultIDCounter;
 
 	std::unique_ptr<IconFetcher> m_iconFetcher;
+	std::unique_ptr<ShellIconLoader> m_shellIconLoader;
+	std::unique_ptr<LegacyContextMenuPreloader> m_legacyContextMenuPreloader;
 	CachedIcons *m_cachedIcons;
 
 	ctpl::thread_pool m_thumbnailThreadPool;

@@ -246,6 +246,11 @@ HWND Explorerplusplus::GetHWND() const
 	return m_hContainer;
 }
 
+bool Explorerplusplus::ShouldOpenContainerFiles() const
+{
+	return m_config->openContainerFiles;
+}
+
 WindowStorageData Explorerplusplus::GetStorageData() const
 {
 	WINDOWPLACEMENT placement = {};

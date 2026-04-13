@@ -171,6 +171,7 @@ void App::LoadSettings(std::vector<WindowStorageData> &windows)
 	appStorage->LoadBookmarks(&m_bookmarkTree);
 	appStorage->LoadColorRules(m_colorRuleModel.get());
 	appStorage->LoadApplications(&m_applicationModel);
+	appStorage->LoadContextMenuActions(&m_contextMenuActionModel);
 	appStorage->LoadDialogStates();
 	appStorage->LoadDefaultColumns(m_config.globalFolderSettings.folderColumns);
 	appStorage->LoadFrequentLocations(&m_frequentLocationsModel);
@@ -217,6 +218,7 @@ void App::SaveSettings()
 	appStorage->SaveBookmarks(&m_bookmarkTree);
 	appStorage->SaveColorRules(m_colorRuleModel.get());
 	appStorage->SaveApplications(&m_applicationModel);
+	appStorage->SaveContextMenuActions(&m_contextMenuActionModel);
 	appStorage->SaveDialogStates();
 	appStorage->SaveDefaultColumns(m_config.globalFolderSettings.folderColumns);
 	appStorage->SaveFrequentLocations(&m_frequentLocationsModel);
@@ -428,6 +430,11 @@ ColorRuleModel *App::GetColorRuleModel() const
 Applications::ApplicationModel *App::GetApplicationModel()
 {
 	return &m_applicationModel;
+}
+
+ContextMenuActions::ContextMenuActionModel *App::GetContextMenuActionModel()
+{
+	return &m_contextMenuActionModel;
 }
 
 HINSTANCE App::GetResourceInstance() const

@@ -98,6 +98,7 @@ HRESULT AddJumpListTasks(const std::list<JumpListTaskInformation> &taskList);
 bool DoesItemHaveAttributes(PCIDLIST_ABSOLUTE pidl, SFGAOF attributes);
 HRESULT GetItemAttributes(const TCHAR *szItemParsingPath, SFGAOF *pItemAttributes);
 HRESULT GetItemAttributes(PCIDLIST_ABSOLUTE pidl, SFGAOF *pItemAttributes);
+bool CanOpenItemAsFolder(PCIDLIST_ABSOLUTE pidl, bool openContainerFiles);
 BOOL LaunchCurrentProcess(HWND hwnd, const std::wstring &parameters,
 	LaunchProcessFlags flags = LaunchProcessFlags::None);
 BOOL LaunchProcess(HWND hwnd, const std::wstring &path, const std::wstring &parameters,

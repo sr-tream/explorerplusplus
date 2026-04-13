@@ -473,66 +473,6 @@ void ShellBrowserImpl::OnShowListViewContextMenu(const POINT &ptScreen)
 	}
 }
 
-void ShellBrowserImpl::ShowBackgroundContextMenu(const POINT &pt)
-{
-	ShellBackgroundContextMenu contextMenu(m_directoryState.pidlDirectory.Raw(), m_browser);
-
-	BackgroundContextMenuDelegate backgroundDelegate(m_browser,
-		m_app->GetPlatformContext()->GetClipboardStore(), m_app->GetResourceLoader());
-	contextMenu.AddDelegate(&backgroundDelegate);
-
-	auto serviceProvider = winrt::make_self<ServiceProvider>();
-	serviceProvider->RegisterService(IID_INewMenuClient, winrt::make<NewMenuClient>(this));
-	serviceProvider->RegisterService(IID_IFolderView,
-		winrt::make<FolderView>(m_weakPtrFactory.GetWeakPtr()));
-	serviceProvider->RegisterService(SID_DefView,
-		winrt::make<ShellView>(m_weakPtrFactory.GetWeakPtr(), m_app->GetBrowserList(),
-			m_browser->GetId(), m_directoryState.pidlDirectory.Raw(), false));
-
-	ShellBackgroundContextMenu::Flags flags = ShellBackgroundContextMenu::Flags::None;
-
-	if (IsKeyDown(VK_SHIFT))
-	{
-		WI_SetFlag(flags, ShellBackgroundContextMenu::Flags::ExtendedVerbs);
-	}
-
-	contextMenu.ShowMenu(m_listView, &pt, serviceProvider.get(), flags);
-}
-
-void ShellBrowserImpl::ShowItemContextMenu(const POINT &pt)
-{
-	auto selectedItems = GetSelectedItemPidls();
-
-	if (selectedItems.empty())
-	{
-		return;
-	}
-
-	std::vector<PCITEMID_CHILD> childPidls;
-
-	for (const auto &item : selectedItems)
-	{
-		childPidls.push_back(ILFindLastID(item.Raw()));
-	}
-
-	ShellItemContextMenu contextMenu(m_directoryState.pidlDirectory.Raw(), childPidls, m_browser);
-
-	OpenItemsContextMenuDelegate openItemsDelegate(m_browser, m_app->GetResourceLoader());
-	contextMenu.AddDelegate(&openItemsDelegate);
-
-	ShellBrowserContextMenuDelegate shellBrowserDelegate(m_weakPtrFactory.GetWeakPtr());
-	contextMenu.AddDelegate(&shellBrowserDelegate);
-
-	ShellItemContextMenu::Flags flags = ShellItemContextMenu::Flags::Rename;
-
-	if (IsKeyDown(VK_SHIFT))
-	{
-		WI_SetFlag(flags, ShellItemContextMenu::Flags::ExtendedVerbs);
-	}
-
-	contextMenu.ShowMenu(m_listView, &pt, nullptr, flags);
-}
-
 bool ShellBrowserImpl::OnSetCursor(HWND target)
 {
 	if (target != m_listView)

@@ -36,7 +36,7 @@ void OpenItemsContextMenuDelegate::UpdateMenuEntries(PCIDLIST_ABSOLUTE directory
 
 	auto pidlComplete = directory + items[0];
 
-	if (!DoesItemHaveAttributes(pidlComplete.Raw(), SFGAO_FOLDER))
+	if (!GetTargetBrowser()->CanOpenItemInNewTab(pidlComplete.Raw()))
 	{
 		return;
 	}

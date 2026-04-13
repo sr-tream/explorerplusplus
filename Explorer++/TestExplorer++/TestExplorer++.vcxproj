@@ -273,6 +273,10 @@
     <ClCompile Include="ColorRulesStorageTestHelper.cpp" />
     <ClCompile Include="ColorRuleTest.cpp" />
     <ClCompile Include="ColorRuleXmlStorageTest.cpp" />
+    <ClCompile Include="ContextMenuActionRegistryStorageTest.cpp" />
+    <ClCompile Include="ContextMenuActionStorageTestHelper.cpp" />
+    <ClCompile Include="ContextMenuActionTest.cpp" />
+    <ClCompile Include="ContextMenuActionXmlStorageTest.cpp" />
     <ClCompile Include="ColumnHelperTest.cpp" />
     <ClCompile Include="ColumnRegistryStorageTest.cpp" />
     <ClCompile Include="ColumnStorageTestHelper.cpp" />
@@ -480,6 +484,7 @@
     <ClInclude Include="SimulatedFileSystemEnumerator.h" />
     <ClInclude Include="SimulatedClipboardDataObject.h" />
     <ClInclude Include="ColorRulesStorageTestHelper.h" />
+    <ClInclude Include="ContextMenuActionStorageTestHelper.h" />
     <ClInclude Include="ColumnStorageTestHelper.h" />
     <ClInclude Include="BrowserCommandTargetFake.h" />
     <ClInclude Include="ConfigStorageTestHelper.h" />

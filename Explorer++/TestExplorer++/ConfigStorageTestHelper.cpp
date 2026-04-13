@@ -24,6 +24,9 @@ Config BuildReference()
 	config.globalFolderSettings.oneClickActivateHoverTime = 40;
 	config.defaultFolderSettings.viewMode = ViewMode::Details;
 	config.defaultFolderSettings.showInGroups = true;
+	config.showQuickContextMenus = false;
+	config.showQuickContextMenuCustomActions = false;
+	config.showQuickContextMenuOpenItemIcon = true;
 	config.tabLoadingIndicatorDelay = 375;
 	return config;
 }

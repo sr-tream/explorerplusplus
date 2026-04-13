@@ -5,6 +5,9 @@
 #include "pch.h"
 #include "../Explorer++/DuplicateFilenameHelper.h"
 #include <gtest/gtest.h>
+#include <filesystem>
+#include <fstream>
+#include <unordered_set>
 
 using namespace testing;
 
@@ -101,4 +104,49 @@ TEST(StripDuplicateSuffixTest, MixedContent)
 	auto result = StripDuplicateSuffix(L"foo (bar) (3).txt");
 	ASSERT_TRUE(result.has_value());
 	EXPECT_EQ(*result, L"foo (bar).txt");
+}
+
+TEST(BuildDuplicateNameTest, InsertsSuffixBeforeExtension)
+{
+	EXPECT_EQ(BuildDuplicateName(L"foo.txt", 2), L"foo (2).txt");
+}
+
+TEST(BuildDuplicateNameTest, ReusesBaseNameForExistingDuplicate)
+{
+	EXPECT_EQ(BuildDuplicateName(L"foo (1).txt", 2), L"foo (2).txt");
+}
+
+TEST(BuildDuplicateNameTest, HandlesFolderNames)
+{
+	EXPECT_EQ(BuildDuplicateName(L"Photos", 3), L"Photos (3)");
+}
+
+TEST(FindNextAvailableDuplicateNameTest, SkipsExistingAndReservedNames)
+{
+	namespace fs = std::filesystem;
+
+	auto testDirectory = fs::temp_directory_path()
+		/ (std::wstring(L"explorerpp-duplicate-helper-")
+			+ std::to_wstring(GetCurrentProcessId()) + L"-" + std::to_wstring(GetTickCount64()));
+	fs::create_directories(testDirectory);
+
+	try
+	{
+		std::ofstream(testDirectory / "foo.txt").put('\n');
+		std::ofstream(testDirectory / "foo (1).txt").put('\n');
+
+		std::unordered_set<std::wstring> reservedNames = { L"foo (2).txt" };
+		auto duplicateName =
+			FindNextAvailableDuplicateName(L"foo.txt", testDirectory.wstring(), reservedNames);
+
+		EXPECT_EQ(duplicateName, L"foo (3).txt");
+		EXPECT_TRUE(reservedNames.contains(L"foo (3).txt"));
+	}
+	catch (...)
+	{
+		fs::remove_all(testDirectory);
+		throw;
+	}
+
+	fs::remove_all(testDirectory);
 }

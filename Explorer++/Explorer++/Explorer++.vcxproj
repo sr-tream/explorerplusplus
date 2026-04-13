@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug-Asan|ARM64">
@@ -1347,11 +1347,17 @@
     <ClCompile Include="TabXmlStorage.cpp" />
     <ClCompile Include="ThemeManager.cpp" />
     <ClCompile Include="DefaultSettingsOptionsPage.cpp" />
+    <ClCompile Include="ContextMenuOptionsPage.cpp" />
     <ClCompile Include="DriveEnumeratorImpl.cpp" />
     <ClCompile Include="DriveModel.cpp" />
     <ClCompile Include="DrivesToolbarView.cpp" />
+    <ClCompile Include="FileIconModel.cpp" />
     <ClCompile Include="FilesFoldersOptionsPage.cpp" />
     <ClCompile Include="GeneralOptionsPage.cpp" />
+    <ClCompile Include="ShellBrowser\LegacyContextMenuPreloader.cpp" />
+    <ClCompile Include="ContextMenuAction.cpp" />
+    <ClCompile Include="ContextMenuActionEditorDialog.cpp" />
+    <ClCompile Include="ContextMenuActionStorage.cpp" />
     <ClCompile Include="OptionsPage.cpp" />
     <ClCompile Include="SearchTabsDialog.cpp" />
     <ClCompile Include="ShellWatcher.cpp" />
@@ -1406,6 +1412,7 @@
     <ClCompile Include="Plugins\CommandApi\Events\CommandInvoked.cpp" />
     <ClCompile Include="CommandLine.cpp" />
     <ClCompile Include="CustomizeColorsDialog.cpp" />
+    <ClCompile Include="ManageContextMenuActionsDialog.cpp" />
     <ClCompile Include="DestroyFilesDialog.cpp" />
     <ClCompile Include="DialogStorageHelper.cpp" />
     <ClCompile Include="DisplayColoursDialog.cpp" />
@@ -1461,6 +1468,7 @@
     <ClCompile Include="ShellBrowser\DropTarget.cpp" />
     <ClCompile Include="ShellBrowser\ShellBrowserImpl.cpp" />
     <ClCompile Include="ShellBrowser\ListView.cpp" />
+    <ClCompile Include="ShellBrowser\QuickContextMenu.cpp" />
     <ClCompile Include="ShellBrowser\SortHelper.cpp" />
     <ClCompile Include="ShellBrowser\SortManager.cpp" />
     <ClCompile Include="ShellBrowser\TileView.cpp" />
@@ -1552,6 +1560,10 @@
     <ClInclude Include="ChangeNotifyMode.h" />
     <ClInclude Include="ClangCLLibs.h" />
     <ClInclude Include="ColorProvider.h" />
+    <ClInclude Include="ContextMenuAction.h" />
+    <ClInclude Include="ContextMenuActionEditorDialog.h" />
+    <ClInclude Include="ContextMenuActionModel.h" />
+    <ClInclude Include="ContextMenuActionStorage.h" />
     <ClInclude Include="BrowserCommandTarget.h" />
     <ClInclude Include="BrowserCommandTargetManager.h" />
     <ClInclude Include="ComStaThreadPoolExecutor.h" />
@@ -1563,6 +1575,7 @@
     <ClInclude Include="DirectoryWatcherFactory.h" />
     <ClInclude Include="DirectoryWatcherFactoryImpl.h" />
     <ClInclude Include="FileOperations.h" />
+    <ClInclude Include="FileIconModel.h" />
     <ClInclude Include="IconModel.h" />
     <ClInclude Include="IconUpdateCallback.h" />
     <ClInclude Include="InsertMarkPosition.h" />
@@ -1732,6 +1745,7 @@
     <ClInclude Include="TabXmlStorage.h" />
     <ClInclude Include="ThemeManager.h" />
     <ClInclude Include="DefaultSettingsOptionsPage.h" />
+    <ClInclude Include="ContextMenuOptionsPage.h" />
     <ClInclude Include="DialogStorageHelper.h" />
     <ClInclude Include="DriveEnumerator.h" />
     <ClInclude Include="DriveEnumeratorImpl.h" />
@@ -1740,6 +1754,7 @@
     <ClInclude Include="DriveWatcher.h" />
     <ClInclude Include="FilesFoldersOptionsPage.h" />
     <ClInclude Include="GeneralOptionsPage.h" />
+    <ClInclude Include="ShellBrowser\LegacyContextMenuPreloader.h" />
     <ClInclude Include="OptionsPage.h" />
     <ClInclude Include="SearchTabsDialog.h" />
     <ClInclude Include="ShellWatcher.h" />
@@ -1806,6 +1821,7 @@
     <ClInclude Include="MainToolbar.h" />
     <ClInclude Include="MainWindow.h" />
     <ClInclude Include="Bookmarks\UI\ManageBookmarksDialog.h" />
+    <ClInclude Include="ManageContextMenuActionsDialog.h" />
     <ClInclude Include="Plugins\Manifest.h" />
     <ClInclude Include="MassRenameDialog.h" />
     <ClInclude Include="Plugins\MenuApi.h" />

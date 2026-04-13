@@ -182,6 +182,58 @@ HRESULT GetItemAttributes(PCIDLIST_ABSOLUTE pidl, SFGAOF *pItemAttributes)
 	return hr;
 }
 
+namespace
+{
+
+bool CanOpenItemAsFolderInternal(PCIDLIST_ABSOLUTE pidl, bool openContainerFiles,
+	int remainingLinkDepth)
+{
+	SFGAOF attributes = SFGAO_FOLDER | SFGAO_STREAM | SFGAO_LINK;
+	HRESULT hr = GetItemAttributes(pidl, &attributes);
+
+	if (FAILED(hr))
+	{
+		return false;
+	}
+
+	if (WI_AreAllFlagsSet(attributes, SFGAO_FOLDER | SFGAO_STREAM))
+	{
+		return openContainerFiles;
+	}
+
+	if (WI_IsFlagSet(attributes, SFGAO_FOLDER))
+	{
+		return true;
+	}
+
+	if (WI_IsFlagSet(attributes, SFGAO_LINK) && remainingLinkDepth > 0)
+	{
+		unique_pidl_absolute target;
+		hr = MaybeGetLinkTarget(pidl, target);
+
+		if (FAILED(hr) || !target)
+		{
+			return false;
+		}
+
+		return CanOpenItemAsFolderInternal(target.get(), openContainerFiles, remainingLinkDepth - 1);
+	}
+
+	return false;
+}
+
+}
+
+bool CanOpenItemAsFolder(PCIDLIST_ABSOLUTE pidl, bool openContainerFiles)
+{
+	if (!pidl)
+	{
+		return false;
+	}
+
+	return CanOpenItemAsFolderInternal(pidl, openContainerFiles, 10);
+}
+
 BOOL LaunchCurrentProcess(HWND hwnd, const std::wstring &parameters, LaunchProcessFlags flags)
 {
 	TCHAR currentProcessPath[MAX_PATH];

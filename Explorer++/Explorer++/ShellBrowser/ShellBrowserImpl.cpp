@@ -24,6 +24,8 @@
 #include "PreservedShellBrowser.h"
 #include "ResourceLoader.h"
 #include "ServiceProvider.h"
+#include "LegacyContextMenuPreloader.h"
+#include "ShellIconLoaderImpl.h"
 #include "ShellEnumeratorImpl.h"
 #include "ShellNavigationController.h"
 #include "SortModes.h"
@@ -106,6 +108,7 @@ ShellBrowserImpl::ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 {
 	InitializeListView();
 	m_iconFetcher = std::make_unique<IconFetcherImpl>(m_listView, m_cachedIcons);
+	m_shellIconLoader = std::make_unique<ShellIconLoaderImpl>(m_iconFetcher.get());
 
 	m_connections.push_back(m_app->GetNavigationEvents()->AddStartedObserver(
 		std::bind_front(&ShellBrowserImpl::OnNavigationStarted, this),
@@ -140,6 +143,7 @@ ShellBrowserImpl::ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 
 ShellBrowserImpl::~ShellBrowserImpl()
 {
+	m_legacyContextMenuPreloader.reset();
 	m_destroyedSignal();
 
 	auto *clipboardStore = m_app->GetPlatformContext()->GetClipboardStore();

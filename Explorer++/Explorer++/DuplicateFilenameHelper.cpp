@@ -12,6 +12,23 @@
 #include <shobjidl.h>
 #include <wil/com.h>
 
+namespace
+{
+
+std::wstring NormalizeDuplicateBaseName(const std::wstring &filename)
+{
+	auto baseName = StripDuplicateSuffix(filename);
+	return baseName.value_or(filename);
+}
+
+std::wstring ToLowerName(std::wstring name)
+{
+	std::transform(name.begin(), name.end(), name.begin(), ::towlower);
+	return name;
+}
+
+}
+
 std::optional<std::wstring> StripDuplicateSuffix(const std::wstring &filename)
 {
 	namespace fs = std::filesystem;
@@ -55,6 +72,48 @@ std::optional<std::wstring> StripDuplicateSuffix(const std::wstring &filename)
 
 	auto baseStem = stem.substr(0, openPos);
 	return baseStem + ext;
+}
+
+std::wstring BuildDuplicateName(const std::wstring &filename, size_t duplicateIndex)
+{
+	namespace fs = std::filesystem;
+
+	fs::path basePath(NormalizeDuplicateBaseName(filename));
+	auto stem = basePath.stem().wstring();
+	auto ext = basePath.extension().wstring();
+
+	return stem + L" (" + std::to_wstring(duplicateIndex) + L")" + ext;
+}
+
+std::wstring FindNextAvailableDuplicateName(const std::wstring &filename,
+	const std::wstring &destinationDir, std::unordered_set<std::wstring> &reservedNames)
+{
+	namespace fs = std::filesystem;
+
+	size_t duplicateIndex = 1;
+
+	while (true)
+	{
+		auto candidateName = BuildDuplicateName(filename, duplicateIndex);
+		auto lowerCandidateName = ToLowerName(candidateName);
+
+		if (reservedNames.contains(lowerCandidateName))
+		{
+			duplicateIndex++;
+			continue;
+		}
+
+		std::error_code ec;
+		fs::path candidatePath = fs::path(destinationDir) / candidateName;
+
+		if (!fs::exists(candidatePath, ec))
+		{
+			reservedNames.insert(std::move(lowerCandidateName));
+			return candidateName;
+		}
+
+		duplicateIndex++;
+	}
 }
 
 std::vector<DuplicateFileMatch> FindDuplicateMatches(

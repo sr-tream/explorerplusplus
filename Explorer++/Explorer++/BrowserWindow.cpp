@@ -148,6 +148,11 @@ void BrowserWindow::OpenItem(PCIDLIST_ABSOLUTE pidlItem)
 	OpenItem(pidlItem, OpenFolderDisposition::CurrentTab);
 }
 
+bool BrowserWindow::CanOpenItemInNewTab(PCIDLIST_ABSOLUTE pidlItem) const
+{
+	return ::CanOpenItemAsFolder(pidlItem, ShouldOpenContainerFiles());
+}
+
 bool BrowserWindow::SelectTabByPath(const std::wstring &itemPath)
 {
 	unique_pidl_absolute pidlItem;

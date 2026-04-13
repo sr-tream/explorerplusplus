@@ -110,16 +110,7 @@ void BrowserWindowFake::OpenItem(const std::wstring &itemPath,
 void BrowserWindowFake::OpenItem(PCIDLIST_ABSOLUTE pidlItem,
 	OpenFolderDisposition openFolderDisposition)
 {
-	SFGAOF attributes = SFGAO_FOLDER | SFGAO_STREAM;
-	HRESULT hr = GetItemAttributes(pidlItem, &attributes);
-
-	if (FAILED(hr))
-	{
-		return;
-	}
-
-	if (WI_IsFlagClear(attributes, SFGAO_FOLDER)
-		|| WI_AreAllFlagsSet(attributes, SFGAO_FOLDER | SFGAO_STREAM))
+	if (!::CanOpenItemAsFolder(pidlItem, m_config->openContainerFiles))
 	{
 		OpenFileItem(pidlItem, L"");
 		return;
@@ -177,6 +168,11 @@ void BrowserWindowFake::OpenItem(PCIDLIST_ABSOLUTE pidlItem,
 	case OpenFolderDisposition::NewTabAlternate:
 		break;
 	}
+}
+
+bool BrowserWindowFake::ShouldOpenContainerFiles() const
+{
+	return m_config->openContainerFiles;
 }
 
 bool BrowserWindowFake::SelectTabByPath(const std::wstring &itemPath)

@@ -42,6 +42,7 @@ public:
 	void OpenItem(const std::wstring &itemPath,
 		OpenFolderDisposition openFolderDisposition) override;
 	void OpenItem(PCIDLIST_ABSOLUTE pidlItem, OpenFolderDisposition openFolderDisposition) override;
+	bool ShouldOpenContainerFiles() const override;
 	bool SelectTabByPath(const std::wstring &itemPath) override;
 	bool ShowItemInFolder(const std::wstring &itemPath,
 		OpenFolderDisposition openFolderDisposition) override;

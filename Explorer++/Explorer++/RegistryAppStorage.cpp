@@ -8,6 +8,7 @@
 #include "Bookmarks/BookmarkRegistryStorage.h"
 #include "ColorRuleRegistryStorage.h"
 #include "ConfigRegistryStorage.h"
+#include "ContextMenuActionStorage.h"
 #include "DefaultColumnRegistryStorage.h"
 #include "DialogStorageHelper.h"
 #include "FrequentLocationsRegistryStorage.h"
@@ -44,6 +45,11 @@ void RegistryAppStorage::LoadColorRules(ColorRuleModel *model)
 void RegistryAppStorage::LoadApplications(Applications::ApplicationModel *model)
 {
 	Applications::ApplicationToolbarRegistryStorage::Load(m_applicationKey.get(), model);
+}
+
+void RegistryAppStorage::LoadContextMenuActions(ContextMenuActions::ContextMenuActionModel *model)
+{
+	ContextMenuActions::Storage::LoadFromRegistry(m_applicationKey.get(), model);
 }
 
 void RegistryAppStorage::LoadDialogStates()
@@ -84,6 +90,12 @@ void RegistryAppStorage::SaveColorRules(const ColorRuleModel *model)
 void RegistryAppStorage::SaveApplications(const Applications::ApplicationModel *model)
 {
 	Applications::ApplicationToolbarRegistryStorage::Save(m_applicationKey.get(), model);
+}
+
+void RegistryAppStorage::SaveContextMenuActions(
+	const ContextMenuActions::ContextMenuActionModel *model)
+{
+	ContextMenuActions::Storage::SaveToRegistry(m_applicationKey.get(), model);
 }
 
 void RegistryAppStorage::SaveDialogStates()

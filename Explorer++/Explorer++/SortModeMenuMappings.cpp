@@ -80,6 +80,73 @@ constexpr MenuItemIdToSortModePair MENU_ITEM_SORT_MODE_MAPPINGS[] = {
 	{ IDM_SORTBY_MEDIA_WRITER, SortMode::MediaWriter },
 	{ IDM_SORTBY_MEDIA_YEAR, SortMode::MediaYear }
 };
+
+// clang-format off
+constexpr MenuItemIdToSortModePair MENU_ITEM_GROUP_MODE_MAPPINGS[] = {
+	{ IDM_GROUPBY_NAME, SortMode::Name },
+	{ IDM_GROUPBY_SIZE, SortMode::Size },
+	{ IDM_GROUPBY_TYPE, SortMode::Type },
+	{ IDM_GROUPBY_DATEMODIFIED, SortMode::DateModified },
+	{ IDM_GROUPBY_TOTALSIZE, SortMode::TotalSize },
+	{ IDM_GROUPBY_FREESPACE, SortMode::FreeSpace },
+	{ IDM_GROUPBY_DATEDELETED, SortMode::DateDeleted },
+	{ IDM_GROUPBY_ORIGINALLOCATION, SortMode::OriginalLocation },
+	{ IDM_GROUPBY_ATTRIBUTES, SortMode::Attributes },
+	{ IDM_GROUPBY_REALSIZE, SortMode::RealSize },
+	{ IDM_GROUPBY_SHORTNAME, SortMode::ShortName },
+	{ IDM_GROUPBY_OWNER, SortMode::Owner },
+	{ IDM_GROUPBY_PRODUCTNAME, SortMode::ProductName },
+	{ IDM_GROUPBY_COMPANY, SortMode::Company },
+	{ IDM_GROUPBY_DESCRIPTION, SortMode::Description },
+	{ IDM_GROUPBY_FILEVERSION, SortMode::FileVersion },
+	{ IDM_GROUPBY_PRODUCTVERSION, SortMode::ProductVersion },
+	{ IDM_GROUPBY_SHORTCUTTO, SortMode::ShortcutTo },
+	{ IDM_GROUPBY_HARDLINKS, SortMode::HardLinks },
+	{ IDM_GROUPBY_EXTENSION, SortMode::Extension },
+	{ IDM_GROUPBY_CREATED, SortMode::Created },
+	{ IDM_GROUPBY_ACCESSED, SortMode::Accessed },
+	{ IDM_GROUPBY_TITLE, SortMode::Title },
+	{ IDM_GROUPBY_SUBJECT, SortMode::Subject },
+	{ IDM_GROUPBY_AUTHOR, SortMode::Authors },
+	{ IDM_GROUPBY_KEYWORDS, SortMode::Keywords },
+	{ IDM_GROUPBY_COMMENTS, SortMode::Comments },
+	{ IDM_GROUPBY_CAMERAMODEL, SortMode::CameraModel },
+	{ IDM_GROUPBY_DATETAKEN, SortMode::DateTaken },
+	{ IDM_GROUPBY_WIDTH, SortMode::Width },
+	{ IDM_GROUPBY_HEIGHT, SortMode::Height },
+	{ IDM_GROUPBY_VIRTUALCOMMENTS, SortMode::VirtualComments },
+	{ IDM_GROUPBY_FILESYSTEM, SortMode::FileSystem },
+	{ IDM_GROUPBY_NUMPRINTERDOCUMENTS, SortMode::NumPrinterDocuments },
+	{ IDM_GROUPBY_PRINTERSTATUS, SortMode::PrinterStatus },
+	{ IDM_GROUPBY_PRINTERCOMMENTS, SortMode::PrinterComments },
+	{ IDM_GROUPBY_PRINTERLOCATION, SortMode::PrinterLocation },
+	{ IDM_GROUPBY_NETWORKADAPTER_STATUS, SortMode::NetworkAdapterStatus },
+	{ IDM_GROUPBY_MEDIA_BITRATE, SortMode::MediaBitrate },
+	{ IDM_GROUPBY_MEDIA_COPYRIGHT, SortMode::MediaCopyright },
+	{ IDM_GROUPBY_MEDIA_DURATION, SortMode::MediaDuration },
+	{ IDM_GROUPBY_MEDIA_PROTECTED, SortMode::MediaProtected },
+	{ IDM_GROUPBY_MEDIA_RATING, SortMode::MediaRating },
+	{ IDM_GROUPBY_MEDIA_ALBUM_ARTIST, SortMode::MediaAlbumArtist },
+	{ IDM_GROUPBY_MEDIA_ALBUM, SortMode::MediaAlbum },
+	{ IDM_GROUPBY_MEDIA_BEATS_PER_MINUTE, SortMode::MediaBeatsPerMinute },
+	{ IDM_GROUPBY_MEDIA_COMPOSER, SortMode::MediaComposer },
+	{ IDM_GROUPBY_MEDIA_CONDUCTOR, SortMode::MediaConductor },
+	{ IDM_GROUPBY_MEDIA_DIRECTOR, SortMode::MediaDirector },
+	{ IDM_GROUPBY_MEDIA_GENRE, SortMode::MediaGenre },
+	{ IDM_GROUPBY_MEDIA_LANGUAGE, SortMode::MediaLanguage },
+	{ IDM_GROUPBY_MEDIA_BROADCAST_DATE, SortMode::MediaBroadcastDate },
+	{ IDM_GROUPBY_MEDIA_CHANNEL, SortMode::MediaChannel },
+	{ IDM_GROUPBY_MEDIA_STATION_NAME, SortMode::MediaStationName },
+	{ IDM_GROUPBY_MEDIA_MOOD, SortMode::MediaMood },
+	{ IDM_GROUPBY_MEDIA_PARENTAL_RATING, SortMode::MediaParentalRating },
+	{ IDM_GROUPBY_MEDIA_PARENTAL_RATING_REASON, SortMode::MediaParentalRatingReason },
+	{ IDM_GROUPBY_MEDIA_PERIOD, SortMode::MediaPeriod },
+	{ IDM_GROUPBY_MEDIA_PRODUCER, SortMode::MediaProducer },
+	{ IDM_GROUPBY_MEDIA_PUBLISHER, SortMode::MediaPublisher },
+	{ IDM_GROUPBY_MEDIA_WRITER, SortMode::MediaWriter },
+	{ IDM_GROUPBY_MEDIA_YEAR, SortMode::MediaYear }
+};
+// clang-format on
 // clang-format on
 
 constexpr bool VerifyMappings(std::span<const MenuItemIdToSortModePair> mappings)
@@ -117,6 +184,7 @@ constexpr bool VerifyMappings(std::span<const MenuItemIdToSortModePair> mappings
 }
 
 static_assert(VerifyMappings(MENU_ITEM_SORT_MODE_MAPPINGS));
+static_assert(VerifyMappings(MENU_ITEM_GROUP_MODE_MAPPINGS));
 
 const SortModeBimap &GetSortModeBimap()
 {
@@ -125,6 +193,23 @@ const SortModeBimap &GetSortModeBimap()
 		SortModeBimap innerMap;
 
 		for (const auto &mapping : MENU_ITEM_SORT_MODE_MAPPINGS)
+		{
+			auto [itr, didInsert] = innerMap.insert({ mapping.first, mapping.second });
+			DCHECK(didInsert);
+		}
+
+		return innerMap;
+	}();
+	return map;
+}
+
+const SortModeBimap &GetGroupModeBimap()
+{
+	static const SortModeBimap map = []()
+	{
+		SortModeBimap innerMap;
+
+		for (const auto &mapping : MENU_ITEM_GROUP_MODE_MAPPINGS)
 		{
 			auto [itr, didInsert] = innerMap.insert({ mapping.first, mapping.second });
 			DCHECK(didInsert);
@@ -155,6 +240,29 @@ SortMode GetSortModeForMenuItemId(UINT menuItemId)
 UINT GetMenuItemIdForSortMode(SortMode sortMode)
 {
 	const auto &map = GetSortModeBimap();
+	auto itr = map.right.find(sortMode);
+	CHECK(itr != map.right.end());
+	return itr->second;
+}
+
+bool IsGroupModeMenuItemId(UINT menuItemId)
+{
+	const auto &map = GetGroupModeBimap();
+	auto itr = map.left.find(menuItemId);
+	return itr != map.left.end();
+}
+
+SortMode GetSortModeForGroupMenuItemId(UINT menuItemId)
+{
+	const auto &map = GetGroupModeBimap();
+	auto itr = map.left.find(menuItemId);
+	CHECK(itr != map.left.end());
+	return itr->second;
+}
+
+UINT GetGroupMenuItemIdForSortMode(SortMode sortMode)
+{
+	const auto &map = GetGroupModeBimap();
 	auto itr = map.right.find(sortMode);
 	CHECK(itr != map.right.end());
 	return itr->second;

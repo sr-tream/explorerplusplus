@@ -11,8 +11,8 @@ class BrowserWindow;
 class ResourceLoader;
 
 // Handles the "Open" menu item for a shell context menu, when that menu is being shown for one or
-// more items. Additionally, if the menu is being shown for a single folder, an "Open in new tab"
-// menu item will be added.
+// more items. Additionally, if the menu is being shown for a single item that can be opened in a
+// tab, an "Open in new tab" menu item will be added.
 class OpenItemsContextMenuDelegate : public ShellItemContextMenuDelegate
 {
 public:
