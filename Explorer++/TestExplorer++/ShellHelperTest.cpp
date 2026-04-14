@@ -26,6 +26,33 @@ protected:
 	}
 };
 
+class QuoteCommandLineArgumentTest : public Test
+{
+protected:
+	void PerformTest(const std::wstring &argument)
+	{
+		std::wstring commandLine = L"test.exe " + QuoteCommandLineArgument(argument);
+
+		int numArguments = 0;
+		auto *arguments = CommandLineToArgvW(commandLine.c_str(), &numArguments);
+		ASSERT_NE(arguments, nullptr);
+		ASSERT_EQ(numArguments, 2);
+		EXPECT_EQ(arguments[1], argument);
+
+		LocalFree(arguments);
+	}
+};
+
+TEST_F(QuoteCommandLineArgumentTest, RootPath)
+{
+	PerformTest(L"D:\\");
+}
+
+TEST_F(QuoteCommandLineArgumentTest, PathWithSpacesAndTrailingBackslash)
+{
+	PerformTest(L"C:\\Temp\\Folder With Space\\");
+}
+
 TEST_F(TransformPathTest, EnvironmentVariablesExpansion)
 {
 	std::wstring currentDirectory = L"c:\\windows";

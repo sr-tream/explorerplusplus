@@ -18,33 +18,7 @@ namespace
 
 std::wstring QuotePath(const std::wstring &path)
 {
-	std::wstring quotedPath = L"\"";
-	size_t numConsecutiveBackslashes = 0;
-
-	for (wchar_t ch : path)
-	{
-		if (ch == L'\\')
-		{
-			numConsecutiveBackslashes++;
-			continue;
-		}
-
-		if (ch == L'"')
-		{
-			quotedPath.append(numConsecutiveBackslashes * 2 + 1, L'\\');
-			quotedPath += ch;
-			numConsecutiveBackslashes = 0;
-			continue;
-		}
-
-		quotedPath.append(numConsecutiveBackslashes, L'\\');
-		numConsecutiveBackslashes = 0;
-		quotedPath += ch;
-	}
-
-	quotedPath.append(numConsecutiveBackslashes * 2, L'\\');
-	quotedPath += L'"';
-	return quotedPath;
+	return QuoteCommandLineArgument(path);
 }
 
 std::wstring BuildSelectedPathsParameter(const std::vector<std::wstring> &selectedItemPaths)

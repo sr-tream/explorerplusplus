@@ -107,6 +107,7 @@ BOOL ExecuteFileAction(HWND hwnd, const std::wstring &itemPath, const std::wstri
 	const std::wstring &parameters, const std::wstring &startDirectory);
 BOOL ExecuteFileAction(HWND hwnd, PCIDLIST_ABSOLUTE pidl, const std::wstring &verb,
 	const std::wstring &parameters, const std::wstring &startDirectory);
+std::wstring QuoteCommandLineArgument(const std::wstring &argument);
 HRESULT DecodeFriendlyPath(const std::wstring &friendlyPath, std::wstring &parsingPath);
 HRESULT ShowMultipleFileProperties(PCIDLIST_ABSOLUTE pidlDirectory,
 	const std::vector<PCITEMID_CHILD> &items, HWND hwnd);

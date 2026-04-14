@@ -543,7 +543,7 @@ void BrowserCommandController::StartCommandPrompt(LaunchProcessFlags flags)
 		return LaunchProcess(m_browser->GetHWND(), path, parameters, directory, flags);
 	};
 
-	std::wstring terminalParameters = L"-d \"" + directory + L"\"";
+	std::wstring terminalParameters = L"-d " + QuoteCommandLineArgument(directory);
 
 	if (tryLaunch(L"wt.exe", terminalParameters))
 	{

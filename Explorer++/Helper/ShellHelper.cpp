@@ -234,6 +234,37 @@ bool CanOpenItemAsFolder(PCIDLIST_ABSOLUTE pidl, bool openContainerFiles)
 	return CanOpenItemAsFolderInternal(pidl, openContainerFiles, 10);
 }
 
+std::wstring QuoteCommandLineArgument(const std::wstring &argument)
+{
+	std::wstring quotedArgument = L"\"";
+	size_t numConsecutiveBackslashes = 0;
+
+	for (wchar_t ch : argument)
+	{
+		if (ch == L'\\')
+		{
+			numConsecutiveBackslashes++;
+			continue;
+		}
+
+		if (ch == L'"')
+		{
+			quotedArgument.append(numConsecutiveBackslashes * 2 + 1, L'\\');
+			quotedArgument += ch;
+			numConsecutiveBackslashes = 0;
+			continue;
+		}
+
+		quotedArgument.append(numConsecutiveBackslashes, L'\\');
+		numConsecutiveBackslashes = 0;
+		quotedArgument += ch;
+	}
+
+	quotedArgument.append(numConsecutiveBackslashes * 2, L'\\');
+	quotedArgument += L'"';
+	return quotedArgument;
+}
+
 BOOL LaunchCurrentProcess(HWND hwnd, const std::wstring &parameters, LaunchProcessFlags flags)
 {
 	TCHAR currentProcessPath[MAX_PATH];
