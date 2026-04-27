@@ -217,6 +217,7 @@ void LoadFromNode(IXMLDOMNode *settingsNode, Config &config)
 	GetBoolSetting(settingsNode, L"SynchronizeTreeview", config.synchronizeTreeview);
 	GetBoolSetting(settingsNode, L"TVAutoExpandSelected", config.treeViewAutoExpandSelected);
 	GetBoolSetting(settingsNode, L"UseFullRowSelect", config.useFullRowSelect);
+	GetBoolSetting(settingsNode, L"DolphinStyleSelection", config.dolphinStyleSelection);
 	GetBoolSetting(settingsNode, L"TreeViewDelayEnabled", config.treeViewDelayEnabled);
 	GetBetterEnumSetting(settingsNode, L"ViewModeGlobal", config.defaultFolderSettings.viewMode);
 	GetTextSetting(settingsNode, L"NewTabDirectory", config.defaultTabDirectory);
@@ -460,6 +461,9 @@ void SaveToNode(IXMLDOMDocument *xmlDocument, IXMLDOMElement *settingsNode, cons
 		L"TVAutoExpandSelected", XMLSettings::EncodeBoolValue(config.treeViewAutoExpandSelected));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"UseFullRowSelect", XMLSettings::EncodeBoolValue(config.useFullRowSelect.get()));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"DolphinStyleSelection",
+		XMLSettings::EncodeBoolValue(config.dolphinStyleSelection.get()));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME, L"IconTheme",
 		XMLSettings::EncodeIntValue(config.iconSet));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,

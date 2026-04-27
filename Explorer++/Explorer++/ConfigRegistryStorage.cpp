@@ -54,6 +54,8 @@ void LoadFromKey(HKEY settingsKey, Config &config)
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"LockToolbars", config.lockToolbars);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"UseFullRowSelect",
 		config.useFullRowSelect);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"DolphinStyleSelection",
+		config.dolphinStyleSelection);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowFilePreviews",
 		config.showFilePreviews);
 	RegistrySettings::ReadBetterEnumValue(settingsKey, L"ReplaceExplorerMode",
@@ -276,6 +278,8 @@ void SaveToKey(HKEY settingsKey, const Config &config)
 	RegistrySettings::SaveDword(settingsKey, L"LockToolbars", config.lockToolbars.get());
 	RegistrySettings::SaveDword(settingsKey, L"ExtendTabControl", config.extendTabControl.get());
 	RegistrySettings::SaveDword(settingsKey, L"UseFullRowSelect", config.useFullRowSelect.get());
+	RegistrySettings::SaveDword(settingsKey, L"DolphinStyleSelection",
+		config.dolphinStyleSelection.get());
 	RegistrySettings::SaveDword(settingsKey, L"ShowFilePreviews", config.showFilePreviews);
 	RegistrySettings::SaveDword(settingsKey, L"ReplaceExplorerMode", config.replaceExplorerMode);
 	RegistrySettings::SaveDword(settingsKey, L"ShowUserNameTitleBar",

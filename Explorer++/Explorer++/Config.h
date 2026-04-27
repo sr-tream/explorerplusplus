@@ -56,6 +56,7 @@ struct Config
 	bool treeViewAutoExpandSelected = false;
 	bool showTaskbarThumbnails = false;
 	ValueWrapper<bool> useFullRowSelect = true;
+	ValueWrapper<bool> dolphinStyleSelection = false;
 	bool showFilePreviews = true;
 	bool allowMultipleInstances = true;
 	bool doubleClickTabClose = true;

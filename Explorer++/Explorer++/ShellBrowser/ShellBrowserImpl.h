@@ -419,6 +419,15 @@ private:
 	void OnListViewItemChanged(const NMLISTVIEW *changeData);
 	void UpdateFileSelectionInfo(int internalIndex, BOOL selected);
 	void OnListViewKeyDown(const NMLVKEYDOWN *lvKeyDown);
+	bool OnListViewLeftButtonDown(const POINT &pt, UINT keysDown);
+	bool OnListViewMarqueeMouseMove(const POINT &pt);
+	bool OnListViewMarqueeButtonUp();
+	void UpdateMarqueeRect(const POINT &pt);
+	void ApplyMarqueeSelection();
+	void DrawMarqueeFrame(const RECT &rect);
+	void EndMarquee(bool cancel);
+	RECT GetVisibleItemRect(int itemIndex) const;
+	bool IsDolphinEmptyZone(const POINT &pt) const;
 	std::vector<PidlAbsolute> GetSelectedItemPidls() const;
 	void OnListViewBeginDrag(const NMLISTVIEW *info);
 	void OnListViewBeginRightClickDrag(const NMLISTVIEW *info);
@@ -689,6 +698,13 @@ private:
 	FolderSettings m_folderSettings;
 
 	int m_middleButtonItem;
+
+	// Dolphin-style marquee selection in details view (active only while the user is dragging).
+	bool m_marqueeActive = false;
+	bool m_marqueeAdditive = false;
+	POINT m_marqueeAnchor = { 0, 0 };
+	RECT m_marqueeRect = { 0, 0, 0, 0 };
+	std::vector<int> m_marqueeBaseSelection;
 
 	// Shell window integration
 	winrt::com_ptr<IShellWindows> m_shellWindows;

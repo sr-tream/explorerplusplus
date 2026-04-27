@@ -44,6 +44,8 @@ std::unique_ptr<ResizableDialogHelper> WindowOptionsPage::InitializeResizeDialog
 		SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(GetDialog(), IDC_OPTION_FULLROWSELECT), MovingType::None,
 		SizingType::Horizontal);
+	controls.emplace_back(GetDlgItem(GetDialog(), IDC_OPTION_DOLPHINSELECTION), MovingType::None,
+		SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(GetDialog(), IDC_GROUP_NAVIGATION_PANE), MovingType::None,
 		SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(GetDialog(), IDC_OPTION_SYNCTREEVIEW), MovingType::None,
@@ -135,6 +137,11 @@ void WindowOptionsPage::InitializeControls()
 	{
 		CheckDlgButton(GetDialog(), IDC_OPTION_FULLROWSELECT, BST_CHECKED);
 	}
+
+	if (m_config->dolphinStyleSelection.get())
+	{
+		CheckDlgButton(GetDialog(), IDC_OPTION_DOLPHINSELECTION, BST_CHECKED);
+	}
 }
 
 void WindowOptionsPage::OnCommand(WPARAM wParam, LPARAM lParam)
@@ -158,6 +165,7 @@ void WindowOptionsPage::OnCommand(WPARAM wParam, LPARAM lParam)
 	case IDC_OPTION_GRIDLINES:
 	case IDC_OPTION_CHECKBOXSELECTION:
 	case IDC_OPTION_FULLROWSELECT:
+	case IDC_OPTION_DOLPHINSELECTION:
 		m_settingChangedCallback();
 		break;
 	}
@@ -206,6 +214,9 @@ void WindowOptionsPage::SaveSettings()
 
 	m_config->useFullRowSelect =
 		(IsDlgButtonChecked(GetDialog(), IDC_OPTION_FULLROWSELECT) == BST_CHECKED);
+
+	m_config->dolphinStyleSelection =
+		(IsDlgButtonChecked(GetDialog(), IDC_OPTION_DOLPHINSELECTION) == BST_CHECKED);
 
 	m_config->useLargeToolbarIcons.set(
 		IsDlgButtonChecked(GetDialog(), IDC_OPTION_LARGETOOLBARICONS) == BST_CHECKED);

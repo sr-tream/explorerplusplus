@@ -87,6 +87,52 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	}
 	break;
 
+	case WM_LBUTTONDOWN:
+	{
+		POINT pt;
+		POINTSTOPOINT(pt, MAKEPOINTS(lParam));
+		if (OnListViewLeftButtonDown(pt, static_cast<UINT>(wParam)))
+		{
+			return 0;
+		}
+	}
+	break;
+
+	case WM_MOUSEMOVE:
+		if (m_marqueeActive)
+		{
+			POINT pt;
+			POINTSTOPOINT(pt, MAKEPOINTS(lParam));
+			if (OnListViewMarqueeMouseMove(pt))
+			{
+				return 0;
+			}
+		}
+		break;
+
+	case WM_LBUTTONUP:
+		if (m_marqueeActive && OnListViewMarqueeButtonUp())
+		{
+			return 0;
+		}
+		break;
+
+	case WM_CAPTURECHANGED:
+		if (m_marqueeActive && reinterpret_cast<HWND>(lParam) != hwnd)
+		{
+			EndMarquee(true);
+		}
+		break;
+
+	case WM_KEYDOWN:
+		if (m_marqueeActive && wParam == VK_ESCAPE)
+		{
+			EndMarquee(true);
+			ReleaseCapture();
+			return 0;
+		}
+		break;
+
 	case WM_MBUTTONDOWN:
 	{
 		POINT pt;
@@ -107,8 +153,21 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 	// more generic message cracker HANDLE_MSG because it's important that the listview control
 	// itself receive this message. Returning 0 would prevent that from happening.
 	case WM_RBUTTONDOWN:
+	{
+		POINT rbPt;
+		POINTSTOPOINT(rbPt, MAKEPOINTS(lParam));
+		if (IsDolphinEmptyZone(rbPt))
+		{
+			// Suppress the listview's right-click selection so the upcoming WM_CONTEXTMENU
+			// (fired by DefWindowProc on WM_RBUTTONUP) sees an empty selection and shows the
+			// background context menu instead of the file menu.
+			ListView_SetItemState(m_listView, -1, 0, LVIS_SELECTED);
+			SetFocus(m_listView);
+			return 0;
+		}
 		HANDLE_WM_RBUTTONDOWN(hwnd, wParam, lParam, OnRButtonDown);
-		break;
+	}
+	break;
 
 	case WM_MOUSEWHEEL:
 	{
@@ -340,23 +399,28 @@ void ShellBrowserImpl::OnListViewDoubleClick(const NMITEMACTIVATE *eventInfo)
 
 bool ShellBrowserImpl::OnListViewLeftButtonDoubleClick(const POINT *pt)
 {
-	if (!m_config->goUpOnDoubleClick)
-	{
-		return false;
-	}
-
 	LV_HITTESTINFO ht;
 	ht.pt = *pt;
 	ListView_HitTest(m_listView, &ht);
 
-	if (ht.flags != LVHT_NOWHERE)
+	bool nativeEmpty = (ht.flags == LVHT_NOWHERE);
+	bool dolphinEmpty = IsDolphinEmptyZone(*pt);
+
+	if (!nativeEmpty && !dolphinEmpty)
 	{
 		return false;
 	}
 
-	m_navigationController->GoUp();
+	if (m_config->goUpOnDoubleClick)
+	{
+		m_navigationController->GoUp();
+		return true;
+	}
 
-	return true;
+	// In a dolphin-style empty zone (over a row, but past the filename), the listview would
+	// normally fire NM_DBLCLK and open the underlying file. Swallow the message so that
+	// doesn't happen, even when goUpOnDoubleClick is off.
+	return dolphinEmpty;
 }
 
 void ShellBrowserImpl::OnListViewMButtonDown(const POINT *pt)
@@ -1629,4 +1693,255 @@ void ShellBrowserImpl::OnOneClickActivateHoverTimeUpdated(UINT newValue)
 {
 	ListViewHelper::ActivateOneClickSelect(m_listView,
 		m_config->globalFolderSettings.oneClickActivate.get(), newValue);
+}
+
+bool ShellBrowserImpl::OnListViewLeftButtonDown(const POINT &pt, UINT keysDown)
+{
+	if (m_marqueeActive)
+	{
+		return false;
+	}
+
+	if (!m_config->dolphinStyleSelection.get())
+	{
+		return false;
+	}
+
+	// Native marquee already works in icon/list/small-icon views; only intercept in details.
+	if (ListView_GetView(m_listView) != LV_VIEW_DETAILS)
+	{
+		return false;
+	}
+
+	LVHITTESTINFO ht = {};
+	ht.pt = pt;
+	ListView_HitTest(m_listView, &ht);
+
+	// State icon (checkbox) clicks always pass through.
+	if (WI_IsFlagSet(ht.flags, LVHT_ONITEMSTATEICON))
+	{
+		return false;
+	}
+
+	// LVHT_ONITEMLABEL is set across the full column 0 width — and across the full row when
+	// LVS_EX_FULLROWSELECT is enabled — so we can't use it to tell text from empty space.
+	// Compute the visible icon+label rect manually and pass through only if the point is inside.
+	if (ht.iItem != -1)
+	{
+		RECT visibleRect = GetVisibleItemRect(ht.iItem);
+		if (PtInRect(&visibleRect, pt))
+		{
+			return false;
+		}
+	}
+
+	bool ctrlHeld = WI_IsFlagSet(keysDown, MK_CONTROL);
+	bool shiftHeld = WI_IsFlagSet(keysDown, MK_SHIFT);
+
+	SetFocus(m_listView);
+	SetCapture(m_listView);
+
+	m_marqueeActive = true;
+	m_marqueeAdditive = ctrlHeld || shiftHeld;
+	m_marqueeAnchor = pt;
+	SetRect(&m_marqueeRect, pt.x, pt.y, pt.x, pt.y);
+	m_marqueeBaseSelection.clear();
+
+	if (m_marqueeAdditive)
+	{
+		int idx = -1;
+		while ((idx = ListView_GetNextItem(m_listView, idx, LVNI_SELECTED)) != -1)
+		{
+			m_marqueeBaseSelection.push_back(idx);
+		}
+	}
+	else
+	{
+		ListView_SetItemState(m_listView, -1, 0, LVIS_SELECTED);
+	}
+
+	return true;
+}
+
+bool ShellBrowserImpl::OnListViewMarqueeMouseMove(const POINT &pt)
+{
+	// Erase previous frame (XOR), update selection, redraw new frame.
+	DrawMarqueeFrame(m_marqueeRect);
+	UpdateMarqueeRect(pt);
+	ApplyMarqueeSelection();
+	DrawMarqueeFrame(m_marqueeRect);
+	return true;
+}
+
+bool ShellBrowserImpl::OnListViewMarqueeButtonUp()
+{
+	EndMarquee(false);
+	ReleaseCapture();
+	return true;
+}
+
+void ShellBrowserImpl::UpdateMarqueeRect(const POINT &pt)
+{
+	m_marqueeRect.left = std::min(m_marqueeAnchor.x, pt.x);
+	m_marqueeRect.top = std::min(m_marqueeAnchor.y, pt.y);
+	m_marqueeRect.right = std::max(m_marqueeAnchor.x, pt.x);
+	m_marqueeRect.bottom = std::max(m_marqueeAnchor.y, pt.y);
+}
+
+void ShellBrowserImpl::ApplyMarqueeSelection()
+{
+	// Dolphin selects rows whose icon+label rect actually intersects the marquee — drawing a
+	// rectangle past all columns selects nothing.
+	std::unordered_set<int> baseSet(m_marqueeBaseSelection.begin(), m_marqueeBaseSelection.end());
+	int count = ListView_GetItemCount(m_listView);
+
+	for (int i = 0; i < count; i++)
+	{
+		RECT iconRect;
+		if (!ListView_GetItemRect(m_listView, i, &iconRect, LVIR_ICON))
+		{
+			continue;
+		}
+
+		bool inMarquee = false;
+
+		// Quick vertical reject: rows entirely above or below the marquee can't intersect, and
+		// skipping them avoids the per-item text measurement in GetVisibleItemRect.
+		if (iconRect.bottom > m_marqueeRect.top && iconRect.top < m_marqueeRect.bottom)
+		{
+			RECT visibleRect = GetVisibleItemRect(i);
+			RECT intersection;
+			inMarquee = IntersectRect(&intersection, &visibleRect, &m_marqueeRect);
+		}
+
+		bool shouldSelect = m_marqueeAdditive ? (baseSet.contains(i) || inMarquee) : inMarquee;
+		bool isSelected =
+			(ListView_GetItemState(m_listView, i, LVIS_SELECTED) & LVIS_SELECTED) != 0;
+
+		if (shouldSelect != isSelected)
+		{
+			ListView_SetItemState(m_listView, i, shouldSelect ? LVIS_SELECTED : 0, LVIS_SELECTED);
+		}
+	}
+}
+
+bool ShellBrowserImpl::IsDolphinEmptyZone(const POINT &pt) const
+{
+	if (!m_config->dolphinStyleSelection.get())
+	{
+		return false;
+	}
+
+	if (ListView_GetView(m_listView) != LV_VIEW_DETAILS)
+	{
+		return false;
+	}
+
+	LVHITTESTINFO ht = {};
+	ht.pt = pt;
+	ListView_HitTest(m_listView, &ht);
+
+	if (WI_IsFlagSet(ht.flags, LVHT_ONITEMSTATEICON))
+	{
+		return false;
+	}
+
+	// True empty space (zone 2) — listview's own behavior is already correct, leave it alone.
+	if (ht.iItem == -1)
+	{
+		return false;
+	}
+
+	RECT visibleRect = GetVisibleItemRect(ht.iItem);
+	return !PtInRect(&visibleRect, pt);
+}
+
+RECT ShellBrowserImpl::GetVisibleItemRect(int itemIndex) const
+{
+	RECT iconRect = {};
+	ListView_GetItemRect(m_listView, itemIndex, &iconRect, LVIR_ICON);
+
+	wchar_t text[MAX_PATH];
+	text[0] = L'\0';
+	LVITEMW lvi = {};
+	lvi.mask = LVIF_TEXT;
+	lvi.iItem = itemIndex;
+	lvi.iSubItem = 0;
+	lvi.pszText = text;
+	lvi.cchTextMax = MAX_PATH;
+	SendMessage(m_listView, LVM_GETITEMW, 0, reinterpret_cast<LPARAM>(&lvi));
+
+	HFONT font = reinterpret_cast<HFONT>(SendMessage(m_listView, WM_GETFONT, 0, 0));
+	SIZE textSize = {};
+
+	HDC hdc = GetDC(m_listView);
+	if (hdc)
+	{
+		HGDIOBJ oldFont = font ? SelectObject(hdc, font) : nullptr;
+		GetTextExtentPoint32W(hdc, text, lstrlenW(text), &textSize);
+		if (oldFont)
+		{
+			SelectObject(hdc, oldFont);
+		}
+		ReleaseDC(m_listView, hdc);
+	}
+
+	// LVIR_LABEL in details mode is the column-0 cell minus the icon — we use it as an upper
+	// bound so a truncated long filename doesn't extend past what's actually rendered.
+	RECT labelArea = {};
+	ListView_GetItemRect(m_listView, itemIndex, &labelArea, LVIR_LABEL);
+
+	constexpr int labelLeftPad = 2;
+	constexpr int labelRightPad = 4;
+	int textBasedEnd = iconRect.right + labelLeftPad + textSize.cx + labelRightPad;
+	int labelEnd = std::min(textBasedEnd, static_cast<int>(labelArea.right));
+
+	RECT result = iconRect;
+	result.right = std::max(static_cast<int>(iconRect.right), labelEnd);
+	return result;
+}
+
+void ShellBrowserImpl::DrawMarqueeFrame(const RECT &rect)
+{
+	if (IsRectEmpty(&rect))
+	{
+		return;
+	}
+
+	HDC hdc = GetDC(m_listView);
+	if (!hdc)
+	{
+		return;
+	}
+
+	DrawFocusRect(hdc, &rect);
+	ReleaseDC(m_listView, hdc);
+}
+
+void ShellBrowserImpl::EndMarquee(bool cancel)
+{
+	if (!m_marqueeActive)
+	{
+		return;
+	}
+
+	DrawMarqueeFrame(m_marqueeRect);
+
+	if (cancel)
+	{
+		// Restore the selection that was present before the marquee started.
+		ListView_SetItemState(m_listView, -1, 0, LVIS_SELECTED);
+		for (int idx : m_marqueeBaseSelection)
+		{
+			ListView_SetItemState(m_listView, idx, LVIS_SELECTED, LVIS_SELECTED);
+		}
+	}
+
+	m_marqueeActive = false;
+	m_marqueeAdditive = false;
+	SetRectEmpty(&m_marqueeRect);
+	m_marqueeBaseSelection.clear();
+
+	// Force a clean repaint to clear any leftover XOR artifacts from the focus rect.
+	InvalidateRect(m_listView, nullptr, false);
 }
