@@ -120,6 +120,8 @@ void LoadFromKey(HKEY settingsKey, Config &config)
 		config.showQuickContextMenuCustomActions);
 	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"ShowQuickContextMenuOpenItemIcon",
 		config.showQuickContextMenuOpenItemIcon);
+	RegistrySettings::Read32BitValueFromRegistry(settingsKey, L"TouchpadScrollSensitivity",
+		config.touchpadScrollSensitivity);
 
 	auto theme = config.theme.get();
 	res = RegistrySettings::ReadBetterEnumValue(settingsKey, L"Theme", theme);
@@ -311,6 +313,8 @@ void SaveToKey(HKEY settingsKey, const Config &config)
 		config.showQuickContextMenuCustomActions);
 	RegistrySettings::SaveDword(settingsKey, L"ShowQuickContextMenuOpenItemIcon",
 		config.showQuickContextMenuOpenItemIcon);
+	RegistrySettings::SaveDword(settingsKey, L"TouchpadScrollSensitivity",
+		config.touchpadScrollSensitivity);
 	RegistrySettings::SaveDword(settingsKey, L"Theme", config.theme.get());
 	RegistrySettings::SaveString(settingsKey, L"NewTabDirectory", config.defaultTabDirectory);
 	RegistrySettings::SaveDword(settingsKey, L"IconTheme", config.iconSet);

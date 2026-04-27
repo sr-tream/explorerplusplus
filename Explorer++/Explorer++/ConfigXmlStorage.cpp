@@ -230,6 +230,7 @@ void LoadFromNode(IXMLDOMNode *settingsNode, Config &config)
 		config.showQuickContextMenuCustomActions);
 	GetBoolSetting(settingsNode, L"ShowQuickContextMenuOpenItemIcon",
 		config.showQuickContextMenuOpenItemIcon);
+	GetIntSetting(settingsNode, L"TouchpadScrollSensitivity", config.touchpadScrollSensitivity);
 
 	auto theme = config.theme.get();
 
@@ -479,6 +480,9 @@ void SaveToNode(IXMLDOMDocument *xmlDocument, IXMLDOMElement *settingsNode, cons
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
 		L"ShowQuickContextMenuOpenItemIcon",
 		XMLSettings::EncodeBoolValue(config.showQuickContextMenuOpenItemIcon));
+	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,
+		L"TouchpadScrollSensitivity",
+		XMLSettings::EncodeIntValue(config.touchpadScrollSensitivity));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME, L"Theme",
 		XMLSettings::EncodeIntValue(config.theme.get()));
 	XMLSettings::WriteStandardSetting(xmlDocument, settingsNode, SETTING_NODE_NAME,

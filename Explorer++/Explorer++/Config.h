@@ -70,6 +70,13 @@ struct Config
 	bool showQuickContextMenuCustomActions = true;
 	bool showQuickContextMenuOpenItemIcon = false;
 
+	// Touchpad scrolling. Precision touchpads stream sub-WHEEL_DELTA events; the listview's
+	// default WM_MOUSEWHEEL handler truncates them to zero. We accumulate into a per-control
+	// residual and emit SB_LINEUP/SB_LINEDOWN per accumulated WHEEL_DELTA worth of input.
+	// Sensitivity is a percentage applied to the per-event raw delta (1..1000, default 300 —
+	// roughly matches Windows' SPI_GETWHEELSCROLLLINES=3 default).
+	int touchpadScrollSensitivity = 300;
+
 	// Indicates whether container files (e.g. .7z, .cab, .rar, .zip) will be opened in Explorer++,
 	// or externally.
 	bool openContainerFiles = false;

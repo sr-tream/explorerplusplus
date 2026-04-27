@@ -22,6 +22,8 @@ ContextMenuOptionsPage::ContextMenuOptionsPage(HWND parent,
 std::unique_ptr<ResizableDialogHelper> ContextMenuOptionsPage::InitializeResizeDialogHelper()
 {
 	std::vector<ResizableDialogControl> controls;
+	controls.emplace_back(GetDlgItem(GetDialog(), IDC_STATIC_INPUT_GROUP_MOUSE),
+		MovingType::None, SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(GetDialog(), IDC_SETTINGS_CHECK_QUICK_CONTEXT_MENUS),
 		MovingType::None, SizingType::Horizontal);
 	controls.emplace_back(
@@ -31,6 +33,8 @@ std::unique_ptr<ResizableDialogHelper> ContextMenuOptionsPage::InitializeResizeD
 		GetDlgItem(GetDialog(), IDC_SETTINGS_CHECK_QUICK_CONTEXT_MENU_OPEN_ITEM_ICON),
 		MovingType::None, SizingType::Horizontal);
 	controls.emplace_back(GetDlgItem(GetDialog(), IDC_BUTTON_MANAGE_CONTEXT_MENU_ACTIONS),
+		MovingType::None, SizingType::Horizontal);
+	controls.emplace_back(GetDlgItem(GetDialog(), IDC_STATIC_INPUT_GROUP_TOUCHPAD),
 		MovingType::None, SizingType::Horizontal);
 	return std::make_unique<ResizableDialogHelper>(GetDialog(), controls);
 }
@@ -54,6 +58,9 @@ void ContextMenuOptionsPage::InitializeControls()
 			BST_CHECKED);
 	}
 
+	SetDlgItemInt(GetDialog(), IDC_SETTINGS_EDIT_TOUCHPAD_SENSITIVITY,
+		m_config->touchpadScrollSensitivity, FALSE);
+
 	SetQuickContextMenuControlStates();
 }
 
@@ -71,6 +78,13 @@ void ContextMenuOptionsPage::OnCommand(WPARAM wParam, LPARAM lParam)
 	case IDC_SETTINGS_CHECK_QUICK_CONTEXT_MENU_CUSTOM_ACTIONS:
 	case IDC_SETTINGS_CHECK_QUICK_CONTEXT_MENU_OPEN_ITEM_ICON:
 		m_settingChangedCallback();
+		break;
+
+	case IDC_SETTINGS_EDIT_TOUCHPAD_SENSITIVITY:
+		if (HIWORD(wParam) == EN_CHANGE)
+		{
+			m_settingChangedCallback();
+		}
 		break;
 
 	case IDC_BUTTON_MANAGE_CONTEXT_MENU_ACTIONS:
@@ -107,4 +121,12 @@ void ContextMenuOptionsPage::SaveSettings()
 	m_config->showQuickContextMenuOpenItemIcon =
 		(IsDlgButtonChecked(GetDialog(), IDC_SETTINGS_CHECK_QUICK_CONTEXT_MENU_OPEN_ITEM_ICON)
 			== BST_CHECKED);
+
+	BOOL ok = FALSE;
+	UINT sensitivity =
+		GetDlgItemInt(GetDialog(), IDC_SETTINGS_EDIT_TOUCHPAD_SENSITIVITY, &ok, FALSE);
+	if (ok && sensitivity >= 1 && sensitivity <= 1000)
+	{
+		m_config->touchpadScrollSensitivity = static_cast<int>(sensitivity);
+	}
 }

@@ -120,16 +120,34 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 			return 0;
 		}
 
-		// Bridge precision-touchpad deltas (which can be much smaller than WHEEL_DELTA) into clean
-		// line-aligned scrolls so the listview's default handler doesn't truncate them to zero.
-		int alignedDelta = m_listViewWheelAccumulator.AddDelta(rawDelta);
+		// Touchpads stream sub-WHEEL_DELTA events; mouse wheels always send a multiple of
+		// WHEEL_DELTA per notch. Apply touchpad sensitivity to sub-notch deltas, accumulate to the
+		// next WHEEL_DELTA boundary, and emit one SB_LINEUP/SB_LINEDOWN per line — bypassing the
+		// listview's default handler which multiplies by SPI_GETWHEELSCROLLLINES.
+		bool isTouchpad = std::abs(rawDelta) < WHEEL_DELTA;
 
-		if (alignedDelta == 0)
+		if (isTouchpad)
 		{
+			int scaledDelta = MulDiv(rawDelta, m_config->touchpadScrollSensitivity, 100);
+			int alignedDelta = m_listViewWheelAccumulator.AddDelta(scaledDelta);
+			int lines = alignedDelta / WHEEL_DELTA;
+
+			if (lines == 0)
+			{
+				return 0;
+			}
+
+			WPARAM scrollCmd = (lines > 0) ? SB_LINEUP : SB_LINEDOWN;
+			for (int i = 0; i < std::abs(lines); i++)
+			{
+				SendMessage(hwnd, WM_VSCROLL, MAKEWPARAM(scrollCmd, 0), 0);
+			}
 			return 0;
 		}
 
-		WPARAM forwardedWParam = MAKEWPARAM(keys, static_cast<WORD>(alignedDelta));
+		// True mouse wheel: forward unchanged so the user's SPI_GETWHEELSCROLLLINES preference is
+		// honoured (one notch -> N lines, where N is the user's Windows-wide setting).
+		WPARAM forwardedWParam = MAKEWPARAM(keys, static_cast<WORD>(rawDelta));
 		return DefSubclassProc(hwnd, uMsg, forwardedWParam, lParam);
 	}
 
