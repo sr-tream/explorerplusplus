@@ -24,6 +24,7 @@
 #include "../Helper/ShellHelper.h"
 #include "../Helper/WeakPtr.h"
 #include "../Helper/WeakPtrFactory.h"
+#include "../Helper/WheelAccumulator.h"
 #include "../Helper/WinRTBaseWrapper.h"
 #include "../ThirdParty/CTPL/cpl_stl.h"
 #include <boost/core/noncopyable.hpp>
@@ -615,6 +616,10 @@ private:
 
 	HWND m_listView;
 	HWND m_owner;
+
+	WheelAccumulator m_listViewWheelAccumulator;
+	WheelAccumulator m_listViewCtrlWheelAccumulator;
+	WheelAccumulator m_listViewShiftWheelAccumulator;
 
 	App *const m_app;
 	BrowserWindow *const m_browser;

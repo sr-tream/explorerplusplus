@@ -961,6 +961,7 @@
     <ClInclude Include="WeakPtr.h" />
     <ClInclude Include="WeakPtrFactory.h" />
     <ClInclude Include="WeakState.h" />
+    <ClInclude Include="WheelAccumulator.h" />
     <ClInclude Include="WilExtraTypes.h" />
     <ClInclude Include="WindowHelper.h" />
     <ClInclude Include="WindowSubclass.h" />

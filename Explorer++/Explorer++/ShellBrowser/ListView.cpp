@@ -111,12 +111,27 @@ LRESULT ShellBrowserImpl::ListViewProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 		break;
 
 	case WM_MOUSEWHEEL:
-		if (OnMouseWheel(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), GET_WHEEL_DELTA_WPARAM(wParam),
-				GET_KEYSTATE_WPARAM(wParam)))
+	{
+		int rawDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+		UINT keys = GET_KEYSTATE_WPARAM(wParam);
+
+		if (OnMouseWheel(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), rawDelta, keys))
 		{
 			return 0;
 		}
-		break;
+
+		// Bridge precision-touchpad deltas (which can be much smaller than WHEEL_DELTA) into clean
+		// line-aligned scrolls so the listview's default handler doesn't truncate them to zero.
+		int alignedDelta = m_listViewWheelAccumulator.AddDelta(rawDelta);
+
+		if (alignedDelta == 0)
+		{
+			return 0;
+		}
+
+		WPARAM forwardedWParam = MAKEWPARAM(keys, static_cast<WORD>(alignedDelta));
+		return DefSubclassProc(hwnd, uMsg, forwardedWParam, lParam);
+	}
 
 	case WM_CONTEXTMENU:
 		OnShowListViewContextMenu({ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) });
@@ -405,17 +420,21 @@ bool ShellBrowserImpl::OnMouseWheel(int xPos, int yPos, int delta, UINT keys)
 	if (WI_IsFlagSet(keys, MK_CONTROL))
 	{
 		// Switch listview views. For each wheel delta (notch) the wheel is scrolled through, switch
-		// the view once.
-		for (int i = 0; i < abs(delta / WHEEL_DELTA); i++)
+		// the view once. The accumulator ensures sub-WHEEL_DELTA touchpad deltas eventually trigger
+		// a switch instead of being silently dropped.
+		int alignedDelta = m_listViewCtrlWheelAccumulator.AddDelta(delta);
+
+		for (int i = 0; i < abs(alignedDelta / WHEEL_DELTA); i++)
 		{
-			CycleViewMode(delta > 0);
+			CycleViewMode(alignedDelta > 0);
 		}
 
 		return true;
 	}
 	else if (WI_IsFlagSet(keys, MK_SHIFT))
 	{
-		int offset = delta / WHEEL_DELTA;
+		int alignedDelta = m_listViewShiftWheelAccumulator.AddDelta(delta);
+		int offset = alignedDelta / WHEEL_DELTA;
 
 		if (offset != 0)
 		{

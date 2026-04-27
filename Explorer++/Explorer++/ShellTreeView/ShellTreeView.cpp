@@ -182,6 +182,22 @@ LRESULT ShellTreeView::TreeViewProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 		ProcessSubfoldersResult(static_cast<int>(wParam));
 		break;
 
+	case WM_MOUSEWHEEL:
+	{
+		// Bridge precision-touchpad deltas (which can be much smaller than WHEEL_DELTA) into clean
+		// line-aligned scrolls so the treeview's default handler doesn't truncate them to zero.
+		int alignedDelta = m_wheelAccumulator.AddDelta(GET_WHEEL_DELTA_WPARAM(wParam));
+
+		if (alignedDelta == 0)
+		{
+			return 0;
+		}
+
+		WPARAM forwardedWParam =
+			MAKEWPARAM(GET_KEYSTATE_WPARAM(wParam), static_cast<WORD>(alignedDelta));
+		return DefSubclassProc(hwnd, msg, forwardedWParam, lParam);
+	}
+
 	case WM_NCDESTROY:
 		delete this;
 		return 0;

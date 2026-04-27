@@ -7,6 +7,7 @@
 #include "MainFontSetter.h"
 #include "MouseEvent.h"
 #include "../Helper/SignalWrapper.h"
+#include "../Helper/WheelAccumulator.h"
 #include <boost/core/noncopyable.hpp>
 #include <CommCtrl.h>
 #include <memory>
@@ -172,6 +173,7 @@ private:
 	void OnNcDestroy();
 
 	const HWND m_hwnd;
+	WheelAccumulator m_wheelAccumulator;
 	std::vector<std::unique_ptr<TabViewItem>> m_tabs;
 	TabViewDelegate *m_delegate = nullptr;
 	MainFontSetter m_fontSetter;

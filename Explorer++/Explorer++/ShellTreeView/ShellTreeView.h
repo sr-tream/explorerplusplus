@@ -14,6 +14,7 @@
 #include "../Helper/ShellDropTargetWindow.h"
 #include "../Helper/ShellHelper.h"
 #include "../Helper/SignalWrapper.h"
+#include "../Helper/WheelAccumulator.h"
 #include "../Helper/WindowSubclass.h"
 #include "../ThirdParty/CTPL/cpl_stl.h"
 #include <boost/signals2.hpp>
@@ -214,6 +215,7 @@ private:
 	ShellBrowserImpl *GetSelectedShellBrowser() const;
 
 	HWND m_hTreeView;
+	WheelAccumulator m_wheelAccumulator;
 	App *const m_app;
 	BrowserWindow *const m_browser;
 	HTREEITEM m_quickAccessRootItem = nullptr;

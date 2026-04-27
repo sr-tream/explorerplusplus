@@ -338,9 +338,16 @@ void TabView::OnMouseWheel(HWND hwnd, int xPos, int yPos, int delta, UINT keys)
 	UNREFERENCED_PARAMETER(yPos);
 	UNREFERENCED_PARAMETER(keys);
 
-	auto scrollDirection = delta > 0 ? ScrollDirection::Left : ScrollDirection::Right;
+	int alignedDelta = m_wheelAccumulator.AddDelta(delta);
 
-	for (int i = 0; i < std::abs(delta / WHEEL_DELTA); i++)
+	if (alignedDelta == 0)
+	{
+		return;
+	}
+
+	auto scrollDirection = alignedDelta > 0 ? ScrollDirection::Left : ScrollDirection::Right;
+
+	for (int i = 0; i < std::abs(alignedDelta / WHEEL_DELTA); i++)
 	{
 		Scroll(scrollDirection);
 	}
