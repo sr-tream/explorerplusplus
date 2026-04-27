@@ -87,3 +87,13 @@ bool IsProcessElevated()
 
 	return tokenElevation.TokenIsElevated;
 }
+
+bool IsRunningUnderWine()
+{
+	static const bool underWine = []
+	{
+		HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+		return ntdll && GetProcAddress(ntdll, "wine_get_version") != nullptr;
+	}();
+	return underWine;
+}

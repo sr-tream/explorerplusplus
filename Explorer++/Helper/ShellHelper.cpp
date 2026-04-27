@@ -531,12 +531,45 @@ HRESULT GetDefaultFileIconIndex(int &outputImageIndex)
 
 HRESULT GetDefaultIcon(SHSTOCKICONID iconId, int &outputImageIndex)
 {
-	SHSTOCKICONINFO info = {};
-	info.cbSize = sizeof(info);
-	RETURN_IF_FAILED(SHGetStockIconInfo(iconId, SHGSI_SYSICONINDEX, &info));
+	// Wine's shell32 ignores SHGSI_SYSICONINDEX: SHGetStockIconInfo returns S_OK without filling
+	// iSysImageIndex, leaving it at -1. ImageList_GetIcon then returns NULL and trips a CHECK in
+	// CopyImageListIcon during startup. Skip the broken call entirely on wine, and fall through
+	// to the SHGetFileInfo path. The same fallback also covers any future platform that returns
+	// an invalid index while claiming success.
+	if (!IsRunningUnderWine())
+	{
+		SHSTOCKICONINFO info = {};
+		info.cbSize = sizeof(info);
+		HRESULT hr = SHGetStockIconInfo(iconId, SHGSI_SYSICONINDEX, &info);
 
-	outputImageIndex = info.iSysImageIndex;
+		if (SUCCEEDED(hr) && info.iSysImageIndex >= 0)
+		{
+			outputImageIndex = info.iSysImageIndex;
+			return S_OK;
+		}
+	}
 
+	DWORD attributes;
+	switch (iconId)
+	{
+	case SIID_FOLDER:
+		attributes = FILE_ATTRIBUTE_DIRECTORY;
+		break;
+	case SIID_DOCNOASSOC:
+		attributes = FILE_ATTRIBUTE_NORMAL;
+		break;
+	default:
+		return E_FAIL;
+	}
+
+	SHFILEINFO shellInfo = {};
+	if (!SHGetFileInfo(L"placeholder", attributes, &shellInfo, sizeof(shellInfo),
+			SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON))
+	{
+		return E_FAIL;
+	}
+
+	outputImageIndex = shellInfo.iIcon;
 	return S_OK;
 }
 
