@@ -405,6 +405,9 @@
     <ClInclude Include="ScopedRedrawDisabler.h">
       <Filter>Control Support</Filter>
     </ClInclude>
+    <ClInclude Include="ScopedStartupTimer.h">
+      <Filter>Control Support</Filter>
+    </ClInclude>
     <ClInclude Include="SignalWrapper.h">
       <Filter>Signals</Filter>
     </ClInclude>

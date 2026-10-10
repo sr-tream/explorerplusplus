@@ -39,6 +39,7 @@
 #include "../Helper/FileActionHandler.h"
 #include "../Helper/FileDialogs.h"
 #include "../Helper/ListViewHelper.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/ShellHelper.h"
 #include "../Helper/StringHelper.h"
 #include <wil/com.h>
@@ -138,6 +139,7 @@ ShellBrowserImpl::ShellBrowserImpl(HWND owner, App *app, BrowserWindow *browser,
 	FAIL_FAST_IF_FAILED(GetDefaultFolderIconIndex(m_iFolderIcon));
 	FAIL_FAST_IF_FAILED(GetDefaultFileIconIndex(m_iFileIcon));
 
+	ScopedStartupTimer shellWindowsTimer("Windows shell service connection");
 	m_shellWindows = winrt::try_create_instance<IShellWindows>(CLSID_ShellWindows, CLSCTX_ALL);
 }
 
@@ -241,6 +243,7 @@ void ShellBrowserImpl::InitializeListView()
 
 void ShellBrowserImpl::ChangeToInitialFolder()
 {
+	ScopedStartupTimer timer("tab initial shell metadata and folder settings");
 	// This class always needs to represent a folder. Therefore, it's necessary to immediately
 	// switch to a folder, in this case, the folder represented by the current entry. Normally, this
 	// is only done once a navigation commits.

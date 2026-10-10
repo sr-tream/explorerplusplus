@@ -910,6 +910,7 @@
     <ClInclude Include="MessageWindowHelper.h" />
     <ClInclude Include="ScopedBitmapLock.h" />
     <ClInclude Include="ScopedRedrawDisabler.h" />
+    <ClInclude Include="ScopedStartupTimer.h" />
     <ClInclude Include="ScopedStopSource.h" />
     <ClInclude Include="ShellBackgroundContextMenu.h" />
     <ClInclude Include="ShellBackgroundContextMenuDelegate.h" />

@@ -33,6 +33,7 @@
 #include "TaskbarThumbnails.h"
 #include "ThemeWindowTracker.h"
 #include "WindowStorage.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/WindowHelper.h"
 #include "../Helper/WindowSubclass.h"
 #include <fmt/format.h>
@@ -59,6 +60,7 @@ Explorerplusplus::Explorerplusplus(App *app, const WindowStorageData *storageDat
 	m_shellIconLoader(&m_iconFetcher),
 	m_applicationExecutor(this)
 {
+	ScopedStartupTimer timer("browser initialization to first paint");
 	m_bShowTabBar = true;
 	m_pActiveShellBrowser = nullptr;
 	m_lastActiveWindow = nullptr;
@@ -87,8 +89,14 @@ Explorerplusplus::Explorerplusplus(App *app, const WindowStorageData *storageDat
 		showState = WindowShowState::Normal;
 	}
 
-	ShowWindow(m_hContainer, ShowStateToNativeShowState(showState));
-	UpdateWindow(m_hContainer);
+	{
+		ScopedStartupTimer showTimer("show browser window");
+		ShowWindow(m_hContainer, ShowStateToNativeShowState(showState));
+	}
+	{
+		ScopedStartupTimer paintTimer("paint browser window");
+		UpdateWindow(m_hContainer);
+	}
 
 	m_app->GetBrowserList()->AddBrowser(this);
 }
@@ -157,6 +165,7 @@ void Explorerplusplus::SetUpControlVisibilityConfigListeners()
 
 void Explorerplusplus::Initialize(const WindowStorageData *storageData)
 {
+	ScopedStartupTimer timer("browser controls and tabs");
 	m_bookmarksMainMenu = std::make_unique<BookmarksMainMenu>(m_app, this, this,
 		m_app->GetResourceLoader(), &m_iconFetcher, m_app->GetBookmarkTree(),
 		BookmarkMenuBuilder::MenuIdRange{ MENU_BOOKMARK_START_ID, MENU_BOOKMARK_END_ID });
@@ -169,10 +178,16 @@ void Explorerplusplus::Initialize(const WindowStorageData *storageData)
 	m_statusBar = StatusBar::Create(statusBarView, this, m_config, m_app->GetTabEvents(),
 		m_app->GetShellBrowserEvents(), m_app->GetNavigationEvents(), m_app->GetResourceLoader());
 
-	CreateMainRebarAndChildren(storageData);
-	InitializeDisplayWindow();
-	InitializeTabs();
-	CreateFolderControls();
+	{
+		ScopedStartupTimer controlsTimer("toolbars, display and tab controls");
+		CreateMainRebarAndChildren(storageData);
+		InitializeDisplayWindow();
+		InitializeTabs();
+	}
+	{
+		ScopedStartupTimer treeTimer("folder tree creation");
+		CreateFolderControls();
+	}
 
 	/* All child windows MUST be resized before
 	any listview changes take place. If auto arrange
@@ -187,11 +202,17 @@ void Explorerplusplus::Initialize(const WindowStorageData *storageData)
 	m_taskbarThumbnails =
 		std::make_unique<TaskbarThumbnails>(m_app, this, GetActivePane()->GetTabContainer());
 
-	CreateInitialTabs(storageData);
+	{
+		ScopedStartupTimer tabsTimer("initial tabs");
+		CreateInitialTabs(storageData);
+	}
 
 	SetFocus(m_hActiveListView);
 
-	InitializePlugins();
+	{
+		ScopedStartupTimer pluginsTimer("plugins");
+		InitializePlugins();
+	}
 
 	m_themeWindowTracker =
 		std::make_unique<ThemeWindowTracker>(m_hContainer, m_app->GetThemeManager());

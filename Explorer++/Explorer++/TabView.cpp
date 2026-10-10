@@ -646,6 +646,10 @@ void TabView::OnFontUpdated()
 
 void TabView::OnNcDestroy()
 {
+	// View items use resources owned by the controller (including its timer manager). Destroy
+	// them before observers can delete that controller in response to the window closing.
+	m_tabs.clear();
+
 	windowDestroyedSignal.m_signal();
 
 	delete this;

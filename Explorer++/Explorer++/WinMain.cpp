@@ -7,6 +7,7 @@
 #include "CommandLine.h"
 #include "CrashHandlerHelper.h"
 #include "StartupCommandLineProcessor.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/SystemClipboardStore.h"
 #include <boost/locale.hpp>
 #include <wil/result.h>
@@ -18,6 +19,7 @@ void InitializeLocale();
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+	const auto startupStart = std::chrono::steady_clock::now();
 	UNREFERENCED_PARAMETER(hInstance);
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
@@ -39,6 +41,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// Logging and crash handling are both explicitly initialized early, so that they're available
 	// for almost the entire lifetime of the application (the only exception being the above block).
 	auto glogCleanup = InitializeLogging();
+	ScopedStartupTimer earlyStartup("WinMain initialization", startupStart);
 	InitializeCrashHandler();
 	InitializeLocale();
 
@@ -61,7 +64,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return *exitCode;
 	}
 
+	earlyStartup.Stop();
+	ScopedStartupTimer appConstruction("App construction");
 	App app(&commandLineSettings);
+	appConstruction.Stop();
 	return app.Run();
 }
 

@@ -558,7 +558,7 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\$(Platform)\$(Configuration);$(ProjectDir)..\Explorer++\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -589,7 +589,7 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\$(Platform)\$(Configuration);$(ProjectDir)..\Explorer++\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -618,7 +618,7 @@
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -649,7 +649,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -680,7 +680,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -711,7 +711,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -742,7 +742,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -771,7 +771,7 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -800,7 +800,7 @@
       <TargetMachine>MachineARM64</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -832,7 +832,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -864,7 +864,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -896,7 +896,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -928,7 +928,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -960,7 +960,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -992,7 +992,7 @@
       <AdditionalDependencies>Helper.lib;Explorer++.exe.lib;winmm.lib;propsys.lib;windowscodecs.lib;dbghelp.lib;msxml2.lib;mpr.lib;urlmon.lib;wininet.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /s /y</Command>
+      <Command>xcopy "$(ProjectDir)Resources" "$(TargetDir)Resources\" /e /y</Command>
     </PostBuildEvent>
     <ResourceCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)Explorer++\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

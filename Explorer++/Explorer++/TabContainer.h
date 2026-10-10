@@ -77,7 +77,7 @@ public:
 
 	// Suppress deferred navigation triggers during bulk tab creation (e.g. startup restore).
 	// While suspended, tab selection won't trigger deferred navigations. Call with false
-	// after the restore loop and final tab selection are complete.
+	// after the restore loop, then explicitly select the final tab to navigate it.
 	void SetDeferredNavigationSuspended(bool suspended);
 
 	Tab &GetTab(int tabId) const;
@@ -153,6 +153,7 @@ private:
 	void ShowBackgroundContextMenu(const POINT &ptClient);
 
 	void OnTabSelected(const Tab &tab);
+	void MaybeStartDeferredNavigation(const Tab &tab);
 
 	bool CloseTab(const Tab &tab, CloseMode closeMode);
 	void RemoveTabFromControl(const Tab &tab);

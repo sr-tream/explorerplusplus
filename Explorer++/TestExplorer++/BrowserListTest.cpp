@@ -143,7 +143,10 @@ TEST_F(BrowserListTest, MaybeGetById)
 	retrievedBrowser = m_browserList.MaybeGetById(browser2.GetId());
 	EXPECT_EQ(retrievedBrowser, &browser2);
 
-	retrievedBrowser = m_browserList.MaybeGetById(100);
+	// Use a genuinely unregistered browser: a fixed ID can collide with browsers created by
+	// earlier tests when the full suite or a different filter is run.
+	BrowserWindowMock unregisteredBrowser;
+	retrievedBrowser = m_browserList.MaybeGetById(unregisteredBrowser.GetId());
 	EXPECT_EQ(retrievedBrowser, nullptr);
 }
 

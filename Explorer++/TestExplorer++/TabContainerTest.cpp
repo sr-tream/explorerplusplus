@@ -12,6 +12,7 @@
 #include "ShellBrowser/ShellNavigationController.h"
 #include "TabLoadingIndicatorState.h"
 #include <gtest/gtest.h>
+#include <format>
 
 using namespace testing;
 using namespace std::chrono_literals;
@@ -57,6 +58,164 @@ TEST_F(TabContainerTest, OpenNewTabNextToCurrentOptionInitialTab)
 	// created to the right of the selected tab. When the first tab is created, there will be no
 	// selected tab, but that should still be a safe operation.
 	m_browser->AddTab(L"c:\\");
+}
+
+TEST_F(TabContainerTest, DeferredBackgroundTabNavigatesOnlyOnFirstSelection)
+{
+	m_browser->AddTab(L"c:\\");
+	auto pidl = CreateSimplePidlForTest(L"d:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams, {}, nullptr, nullptr, true);
+	EXPECT_EQ(m_tabContainer->GetSelectedTabIndex(), 0);
+
+	EXPECT_CALL(started, Call(_))
+		.WillOnce(
+			[&](const NavigationRequest *request)
+			{
+				EXPECT_EQ(request->GetShellBrowser(), tab.GetShellBrowser());
+				EXPECT_EQ(request->GetNavigateParams().pidl, pidl);
+				EXPECT_TRUE(m_tabContainer->IsTabSelected(tab));
+			});
+	m_tabContainer->SelectTab(tab);
+	EXPECT_EQ(tab.GetShellBrowser()->GetDirectory(), pidl);
+
+	m_tabContainer->SelectTabAtIndex(0);
+	m_tabContainer->SelectTab(tab);
+}
+
+TEST_F(TabContainerTest, DeferredSelectedTabNavigatesOnCreation)
+{
+	m_browser->AddTab(L"c:\\");
+	auto pidl = CreateSimplePidlForTest(L"d:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+	EXPECT_CALL(started, Call(_)).Times(1);
+
+	auto &tab =
+		m_tabContainer->CreateNewTab(navigateParams, { .selected = true }, nullptr, nullptr, true);
+	EXPECT_TRUE(m_tabContainer->IsTabSelected(tab));
+	EXPECT_EQ(tab.GetShellBrowser()->GetDirectory(), pidl);
+}
+
+TEST_F(TabContainerTest, DeferredFirstTabNavigatesOnCreation)
+{
+	auto pidl = CreateSimplePidlForTest(L"c:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+	EXPECT_CALL(started, Call(_)).Times(1);
+
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams, {}, nullptr, nullptr, true);
+	EXPECT_TRUE(m_tabContainer->IsTabSelected(tab));
+	EXPECT_EQ(tab.GetShellBrowser()->GetDirectory(), pidl);
+}
+
+TEST_F(TabContainerTest, DeferredRestoreCanNavigateAlreadySelectedFirstTab)
+{
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+
+	m_tabContainer->SetDeferredNavigationSuspended(true);
+	auto pidl = CreateSimplePidlForTest(L"c:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams, {}, nullptr, nullptr, true);
+	m_tabContainer->SelectTab(tab);
+	EXPECT_EQ(m_tabContainer->GetSelectedTabIndex(), 0);
+	m_tabContainer->SetDeferredNavigationSuspended(false);
+
+	EXPECT_CALL(started, Call(_)).Times(1);
+	m_tabContainer->SelectTabAtIndex(0);
+	EXPECT_EQ(tab.GetShellBrowser()->GetDirectory(), pidl);
+}
+
+TEST_F(TabContainerTest, DeferredBulkRestoreNavigatesOnlyFinalSelection)
+{
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+
+	m_tabContainer->SetDeferredNavigationSuspended(true);
+	for (int i = 0; i < 3; i++)
+	{
+		auto pidl = CreateSimplePidlForTest(std::format(L"c:\\restored{}", i));
+		auto navigateParams = NavigateParams::Normal(pidl.Raw());
+		m_tabContainer->CreateNewTab(navigateParams, { .index = i }, nullptr, nullptr, true);
+	}
+	m_tabContainer->SetDeferredNavigationSuspended(false);
+
+	auto &selectedTab = m_tabContainer->GetTabByIndex(2);
+	EXPECT_CALL(started, Call(_))
+		.WillOnce([&](const NavigationRequest *request)
+			{ EXPECT_EQ(request->GetShellBrowser(), selectedTab.GetShellBrowser()); });
+	m_tabContainer->SelectTab(selectedTab);
+	EXPECT_EQ(m_tabContainer->GetNumTabs(), 3);
+}
+
+TEST_F(TabContainerTest, DeferredNavigationFollowsSelectionNotification)
+{
+	m_browser->AddTab(L"c:\\");
+	auto pidl = CreateSimplePidlForTest(L"d:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams, {}, nullptr, nullptr, true);
+
+	StrictMock<MockFunction<void()>> selected;
+	boost::signals2::scoped_connection selectedConnection = m_tabEvents.AddSelectedObserver(
+		[&](const Tab &selectedTab)
+		{
+			EXPECT_EQ(&selectedTab, &tab);
+			selected.Call();
+		},
+		TabEventScope::ForBrowser(*m_browser));
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection startedConnection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForActiveShellBrowser(*m_browser));
+
+	InSequence sequence;
+	EXPECT_CALL(selected, Call());
+	EXPECT_CALL(started, Call(_));
+	m_tabContainer->SelectTab(tab);
+}
+
+TEST_F(TabContainerTest, ClosingDeferredTabDoesNotNavigate)
+{
+	m_browser->AddTab(L"c:\\");
+	auto pidl = CreateSimplePidlForTest(L"d:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams, {}, nullptr, nullptr, true);
+	int tabId = tab.GetId();
+
+	StrictMock<MockFunction<void(const NavigationRequest *)>> started;
+	boost::signals2::scoped_connection connection = m_navigationEvents.AddStartedObserver(
+		started.AsStdFunction(), NavigationEventScope::ForBrowser(*m_browser));
+	EXPECT_TRUE(m_tabContainer->CloseTab(tab));
+	EXPECT_EQ(m_tabContainer->MaybeGetTab(tabId), nullptr);
+	EXPECT_EQ(m_tabContainer->GetNumTabs(), 1);
+	m_tabContainer->SelectTabAtIndex(0);
+}
+
+TEST_F(TabContainerTest, DeferredAddressLockedTabNavigatesInPlace)
+{
+	m_browser->AddTab(L"c:\\");
+	auto pidl = CreateSimplePidlForTest(L"d:\\restored");
+	auto navigateParams = NavigateParams::Normal(pidl.Raw());
+	auto &tab = m_tabContainer->CreateNewTab(navigateParams,
+		{ .lockState = Tab::LockState::AddressLocked }, nullptr, nullptr, true);
+
+	m_tabContainer->SelectTab(tab);
+	EXPECT_EQ(m_tabContainer->GetNumTabs(), 2);
+	EXPECT_EQ(tab.GetLockState(), Tab::LockState::AddressLocked);
+	EXPECT_EQ(tab.GetShellBrowser()->GetDirectory(), pidl);
 }
 
 TEST_F(TabContainerTest, OpenNewTabNextToCurrentOption)

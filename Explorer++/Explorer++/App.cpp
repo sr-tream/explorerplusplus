@@ -30,6 +30,7 @@
 #include "XmlAppStorageFactory.h"
 #include "../Helper/CachedIcons.h"
 #include "../Helper/Helper.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include <fmt/format.h>
 #include <fmt/xchar.h>
 
@@ -127,21 +128,37 @@ int App::Run()
 
 void App::SetUpSession()
 {
+	ScopedStartupTimer timer("session setup");
 	std::vector<WindowStorageData> windows;
-	LoadSettings(windows);
+	{
+		ScopedStartupTimer settingsTimer("settings load");
+		LoadSettings(windows);
+	}
 
 	// This function may attempt to notify an existing process if the allowMultipleInstances config
 	// value is disabled. Therefore, this call needs to be made after the settings have been loaded.
 	// If the allowMultipleInstances setting is removed, this call can be made earlier.
-	if (!m_processManager.InitializeCurrentProcess(m_commandLineSettings, &m_config))
+	ScopedStartupTimer processTimer("process registration");
+	bool initialized = m_processManager.InitializeCurrentProcess(m_commandLineSettings, &m_config);
+	processTimer.Stop();
+	if (!initialized)
 	{
 		PostQuitMessage(EXIT_CODE_NORMAL_EXISTING_PROCESS);
 		return;
 	}
 
-	SetUpLanguageResourceInstance();
+	{
+		ScopedStartupTimer languageTimer("language and resources");
+		SetUpLanguageResourceInstance();
+	}
 
 	RestoreSession(windows);
+	timer.Stop();
+	if (FLAGS_minloglevel <= google::GLOG_INFO)
+	{
+		// Keep startup traces available even if shutdown later blocks on a shell worker.
+		google::FlushLogFiles(google::GLOG_INFO);
+	}
 }
 
 void App::LoadSettings(std::vector<WindowStorageData> &windows)

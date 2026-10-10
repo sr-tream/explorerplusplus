@@ -26,6 +26,7 @@
 #include "../Helper/CachedIcons.h"
 #include "../Helper/Controls.h"
 #include "../Helper/DpiCompatibility.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/ShellHelper.h"
 #include "../Helper/WeakPtrFactory.h"
 #include "../Helper/WindowHelper.h"
@@ -373,16 +374,23 @@ void TabContainer::OnTabSelected(const Tab &tab)
 
 	// Trigger deferred navigation after selection state is fully updated, so that
 	// observers see the correct active tab when navigation events fire.
-	if (!m_deferredNavigationsSuspended)
-	{
-		auto it = m_deferredNavigations.find(tab.GetId());
+	MaybeStartDeferredNavigation(tab);
+}
 
-		if (it != m_deferredNavigations.end())
-		{
-			auto navigateParams = std::move(it->second);
-			m_deferredNavigations.erase(it);
-			tab.GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
-		}
+void TabContainer::MaybeStartDeferredNavigation(const Tab &tab)
+{
+	if (m_deferredNavigationsSuspended || !IsTabSelected(tab))
+	{
+		return;
+	}
+
+	auto it = m_deferredNavigations.find(tab.GetId());
+
+	if (it != m_deferredNavigations.end())
+	{
+		auto navigateParams = std::move(it->second);
+		m_deferredNavigations.erase(it);
+		tab.GetShellBrowser()->GetNavigationController()->Navigate(navigateParams);
 	}
 }
 
@@ -405,6 +413,7 @@ Tab &TabContainer::CreateNewTab(const std::wstring &directory, const TabSettings
 	const FolderSettings *folderSettings, const FolderColumns *initialColumns,
 	bool deferNavigation)
 {
+	ScopedStartupTimer parsingTimer("tab folder path resolution");
 	unique_pidl_absolute pidl;
 	HRESULT hr = ParseDisplayNameForNavigation(directory.c_str(), pidl);
 
@@ -418,6 +427,7 @@ Tab &TabContainer::CreateNewTab(const std::wstring &directory, const TabSettings
 		}
 	}
 
+	parsingTimer.Stop();
 	auto navigateParams = NavigateParams::Normal(pidl.get());
 	return CreateNewTab(navigateParams, tabSettings, folderSettings, initialColumns,
 		deferNavigation);
@@ -460,6 +470,7 @@ Tab &TabContainer::CreateNewTab(NavigateParams &navigateParams, const TabSetting
 	const FolderSettings *folderSettings, const FolderColumns *initialColumns,
 	bool deferNavigation)
 {
+	ScopedStartupTimer timer("tab creation");
 	FolderSettings folderSettingsFinal;
 
 	if (folderSettings)
@@ -471,8 +482,10 @@ Tab &TabContainer::CreateNewTab(NavigateParams &navigateParams, const TabSetting
 		folderSettingsFinal = m_config->defaultFolderSettings;
 	}
 
+	ScopedStartupTimer shellTimer("tab shell browser construction");
 	auto shellBrowser =
 		m_shellBrowserFactory->Create(navigateParams.pidl, folderSettingsFinal, initialColumns);
+	shellTimer.Stop();
 
 	Tab::InitialData initialTabData;
 
@@ -558,6 +571,9 @@ Tab &TabContainer::SetUpNewTab(Tab &tab, NavigateParams &navigateParams,
 	if (deferNavigation)
 	{
 		m_deferredNavigations.insert_or_assign(tab.GetId(), navigateParams);
+		// Selection notifications have already been sent, including for an implicitly
+		// selected first tab. Start its navigation now unless bulk restore is suspended.
+		MaybeStartDeferredNavigation(tab);
 	}
 	else
 	{
@@ -698,6 +714,9 @@ void TabContainer::SelectAdjacentTab(SelectionDirection selectionDirection)
 void TabContainer::SelectTabAtIndex(int index)
 {
 	m_view->SelectTabAtIndex(index);
+	// Reselecting the active tab doesn't emit a view selection event. It can still
+	// need its initial navigation after bulk restore has resumed.
+	MaybeStartDeferredNavigation(GetSelectedTab());
 }
 
 Tab &TabContainer::GetSelectedTab() const

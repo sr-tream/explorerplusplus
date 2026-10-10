@@ -24,6 +24,7 @@
 #include "WebBrowserApp.h"
 #include "../Helper/ListViewHelper.h"
 #include "../Helper/ScopedRedrawDisabler.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/ShellHelper.h"
 #include "../Helper/StringHelper.h"
 #include "../Helper/WinRTBaseWrapper.h"
@@ -133,6 +134,7 @@ void ShellBrowserImpl::NotifyShellOfNavigation(PCIDLIST_ABSOLUTE pidl)
 		return;
 	}
 
+	ScopedStartupTimer timer("shell navigation notification");
 	HRESULT hr = RegisterShellWindowIfNecessary(pidl);
 
 	if (FAILED(hr))
@@ -222,6 +224,7 @@ HRESULT ShellBrowserImpl::RegisterShellWindowIfNecessary(PCIDLIST_ABSOLUTE pidl)
 // be brought to the foreground if present.
 HRESULT ShellBrowserImpl::RegisterShellWindow(PCIDLIST_ABSOLUTE pidl)
 {
+	ScopedStartupTimer timer("shell window registration");
 	if (!m_shellWindows)
 	{
 		return E_FAIL;
@@ -352,6 +355,7 @@ void ShellBrowserImpl::OnNavigationWillCommit(const NavigationRequest *request)
 
 void ShellBrowserImpl::OnNavigationComitted(const NavigationRequest *request)
 {
+	ScopedStartupTimer timer("tab navigation commit");
 	CHECK(request->GetShellBrowser() == this);
 
 	ChangeFolders(request->GetNavigateParams().pidl);

@@ -158,6 +158,17 @@ TEST_F(NavigationEventsTest, SignalsFilteredByBrowser)
 	m_navigationEvents.NotifyStopped(m_tab3->GetShellBrowser());
 }
 
+TEST_F(NavigationEventsTest, WindowDestroyedWithPendingLoadingIndicator)
+{
+	// Keep the loading indicator timer pending while the tab control is destroyed. Its timer
+	// manager belongs to TabContainer, which is deleted by the window-destroyed notification.
+	m_config.tabLoadingIndicatorDelay = 10000;
+	m_navigationEvents.NotifyStarted(&m_request1);
+	m_navigationEvents.NotifyStarted(&m_request2);
+
+	RemoveBrowser(m_browser1);
+}
+
 TEST_F(NavigationEventsTest, SignalsFilteredByShellBrowser)
 {
 	InSequence seq;

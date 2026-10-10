@@ -40,6 +40,7 @@
 #include "../Helper/Helper.h"
 #include "../Helper/MenuHelper.h"
 #include "../Helper/ScopedRedrawDisabler.h"
+#include "../Helper/ScopedStartupTimer.h"
 #include "../Helper/ShellHelper.h"
 #include "../Helper/ShellItemContextMenu.h"
 #include <wil/common.h>
@@ -276,6 +277,7 @@ LRESULT ShellTreeView::ParentWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM
 
 void ShellTreeView::AddRootItems()
 {
+	ScopedStartupTimer timer("folder tree roots and synchronous expansion");
 	if (m_config->showQuickAccessInTreeView.get())
 	{
 		AddQuickAccessRootItem();

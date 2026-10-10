@@ -36,22 +36,22 @@ INSTANTIATE_TEST_SUITE_P(CopyAndMoveEffects, PreferredDropEffectTestSuite,
 TEST(FileOperationsTest, TransferOperationFlagsRequireElevation)
 {
 	EXPECT_EQ(::FileOperations::GetTransferOperationFlags(),
-		FOF_ALLOWUNDO | FOFX_REQUIREELEVATION);
+		static_cast<DWORD>(FOF_ALLOWUNDO | FOFX_REQUIREELEVATION));
 }
 
 TEST(FileOperationsTest, DeleteOperationFlagsRequireElevation)
 {
 	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(false, false),
-		FOF_ALLOWUNDO | FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION);
+		static_cast<DWORD>(FOF_ALLOWUNDO | FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION));
 	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(true, false),
-		FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION);
+		static_cast<DWORD>(FOF_WANTNUKEWARNING | FOFX_REQUIREELEVATION));
 }
 
 TEST(FileOperationsTest, SilentDeleteOperationFlagsStillAllowElevationPrompt)
 {
 	EXPECT_EQ(::FileOperations::GetDeleteOperationFlags(true, true),
-		FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOFX_REQUIREELEVATION
-			| FOFX_SHOWELEVATIONPROMPT);
+		static_cast<DWORD>(FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOFX_REQUIREELEVATION
+			| FOFX_SHOWELEVATIONPROMPT));
 }
 
 TEST(FileOperationsTest, GetTransferActionDefaultsToCopy)
